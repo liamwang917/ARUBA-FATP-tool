@@ -11,7 +11,7 @@ ARUBA FATP microphone test-data整理與分析工具。
 - Raw CSV files: 219
 - WAV files: 146
 - Existing Excel summary: 1
-- Current parser/tool version: `build_summary_windows_v12_calc`
+- Current parser/tool version: v12 (`src/build_summary.py`; see `CHANGELOG.md`)
 
 ### Parsed output coverage
 
@@ -30,38 +30,34 @@ All 73 DUT frequency axes checked in the current dataset are consistent.
 ## Repository layout
 
 ```text
-src/                 Python source code
-tools/               Windows launchers / helper scripts
-docs/                Usage notes and engineering review notes
+src/
+  build_summary.py         Current parser / Excel summary builder (v12 logic)
+tools/
+  run_build_summary.bat    Windows launcher
+docs/
+  usage.md                 How to run the tool
+  review_2026-09-07.md     Engineering review + V13 backlog (dated historical record)
 data/
-  snapshots/         Versioned data snapshots that can be shared through GitHub
-  manifests/         Dataset inventory / integrity information
-  outputs/           Generated analysis outputs when practical
+  snapshots/               Dataset composition, counts, and SHA-256 integrity records
+  manifests/               Per-dataset inventory / integrity manifests (placeholder)
+  outputs/                 Generated analysis outputs, when checked in (placeholder)
+CHANGELOG.md               Version history (v9 → v12) and the V13 backlog
+requirements.txt           Python dependencies
 ```
 
 ## Run
 
-Requirements:
-
-- Python 3.10+
-- `openpyxl`
-
-Install dependency:
+See `docs/usage.md` for full usage notes. Quick start:
 
 ```bash
 py -3 -m pip install -r requirements.txt
+python src/build_summary.py <raw-data-folder>
 ```
 
 Windows:
 
 ```text
-tools\run_build_summary_v12_calc.bat
-```
-
-Or run directly:
-
-```bash
-python src/build_summary_windows_v12_calc.py <raw-data-folder>
+tools\run_build_summary.bat
 ```
 
 The selected raw-data folder is expected to contain:
@@ -84,20 +80,12 @@ This may be intentional if filename PASS represents the factory station final ju
 - `Station Result`
 - `APx Section Result`
 
-See `docs/review_2026-09-07.md` for the full review.
-
-## V13 priority backlog
-
-1. Separate station result from APx section result.
-2. Add import/data-QC log and missing-file checks.
-3. Validate frequency axes for every DUT instead of only using the first header.
-4. Preserve station metadata such as operator/station/test SW/timing.
-5. Add automatic statistics: N / Mean / Max / Min / Range / STDEV.
-6. Improve Excel usability: freeze panes, filters, widths, datetime, number formats and PASS/FAIL formatting.
-7. Add optional dashboard/charts after the data model is stable.
+See `docs/review_2026-09-07.md` for the full review and `CHANGELOG.md` for the complete V13 backlog.
 
 ## Data note
 
-The source package contains about 46.2 MB of WAV binary recordings. The current ChatGPT GitHub connector can write repository text and Git objects, but it does not provide a practical local-file upload path for the full WAV set in one operation. The PR therefore tracks the WAV inventory/integrity separately and prioritizes the complete numerical CSV dataset, source code and review artifacts. Do not treat absence of WAV bytes in the branch as deletion of the original local dataset.
+The source package contains about 46.2 MB of WAV binary recordings. These binaries are **not stored in this repository** — only their counts, sizes, and SHA-256 hashes are recorded in `data/snapshots/README.md` so the local package can be verified. Do not treat their absence from this repo as deletion of the original local dataset.
 
-Because this repository is public, verify that DUT identifiers and factory test metadata are permitted for public disclosure before merging the data snapshot into `main`.
+## Data disclosure note
+
+This repository is public. As of 2026-09-08 the tracked files record only aggregate counts, file-size totals, and SHA-256 hashes of the local dataset — no individual DUT serial numbers or raw factory test values are checked into this repository. Keeping this public was confirmed acceptable on that basis; re-check this note before committing raw CSV/WAV data or per-unit serial numbers in the future.
