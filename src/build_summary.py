@@ -1,3 +1,12 @@
+"""
+ARUBA FATP microphone test-data summary builder.
+
+Current version: v12 ("calculation-friendly" variant).
+Version history and the V13 backlog are tracked in CHANGELOG.md;
+this file is intentionally not renamed per version so tooling and
+launcher paths stay stable across releases.
+"""
+
 import csv
 import re
 import sys
