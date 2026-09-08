@@ -1,91 +1,167 @@
 # ARUBA-FATP-tool
 
-ARUBA FATP 麥克風產測資料整理與分析工具。
+ARUBA FATP 麥克風 / PREMIC 產測資料整理與分析工具。
 
-## 目前快照(Current snapshot)
+## 目前狀態
 
-- 快照日期:2026-09-07
-- 來源資料集:2026-08-26 ARUBA MIC FATP 產測批次
-- DUT 資料夾數:73
-- 唯一序號(SN)數:73
-- 原始 CSV 檔案數:219
-- WAV 檔案數:146
-- 既有 Excel 摘要檔:1 份
-- 目前解析工具版本:v12(`src/build_summary.py`;詳見 `CHANGELOG.md`)
+- `v12`：目前可執行版本，位於 `src/build_summary.py`
+- `v13`：架構與資料規格已收斂，尚未完成程式實作
+- 最新 V13 規格：`docs/v13_spec_2026-09-08.md`
+- 最新資料快照與 SHA-256：`data/snapshots/README.md`
 
-### 解析輸出涵蓋範圍
+## v12 已驗證內容
 
-| 分頁 | 目前資料 |
-| --- | ---: |
-| FR_original | 0 筆(RawData_RD 目前為空) |
-| FR_1_3 | 73 台 DUT × 80 個頻率點 |
-| FR_1_12 | 0 筆(RawData_RD 目前為空) |
-| THD | 73 台 DUT × 80 個頻率點 |
-| Phase | 73 台 DUT × 80 個頻率點 |
-| Noise | 73 台 DUT × 800 個頻率點 |
-| Sealing | 0 筆(此資料集沒有 Sealing CSV) |
+2026-08-26 MIC FATP 資料集：
 
-目前資料集中所有 73 台 DUT 的頻率軸都經過檢查,結果一致。
+- DUT 資料夾：73
+- Unique SN：73
+- CSV：219
+- WAV：146
+- FR / THD / Phase：各 73 × 80 frequency points
+- Noise：73 × 800 frequency points
+- 73 台 DUT frequency axis 已確認一致
 
-## 專案結構(Repository layout)
+目前 v12 的 FR / THD / Phase `Result` 仍由 FR filename 的 `PASS/FAIL` 推導；APx CSV section 內的 `Test Result:` 可能與 filename result 不同。V13 將兩者分開保存。
+
+## V13 目標架構
+
+V13 改為直接讀 ZIP，不要求使用者先解壓縮，也不再假設 `Online` 下一層就是 DUT folder。
+
+### 輸入來源
 
 ```text
-src/
-  build_summary.py         目前的解析器 / Excel 摘要產生器(v12 邏輯)
-tools/
-  run_build_summary.bat    Windows 執行捷徑
-docs/
-  usage.md                 使用說明
-  review_2026-09-07.md     工程 review 報告 + V13 待辦清單(帶日期的歷史紀錄)
-data/
-  snapshots/               資料集組成、數量與 SHA-256 完整性紀錄
-  manifests/               各資料集的清單 / 完整性紀錄(佔位用,尚未填入內容)
-  outputs/                 若有收錄,存放產生的分析結果(佔位用,尚未填入內容)
-CHANGELOG.md               版本歷史(v9 → v12)與 V13 待辦清單
-requirements.txt           Python 相依套件
+ARUBA_MIC.zip
+ARUBA_PREMIC.zip
+RawData_RD.zip
 ```
 
-## 執行方式(Run)
+MIC 與 PREMIC 的 FATP 路徑與 CSV 結構相同，只是最上層 Test Type 名稱不同，因此共用同一套 scanner/parser/report builder。
 
-完整使用說明請見 `docs/usage.md`。快速開始:
+```text
+ARUBA_MIC.zip
+└─ .../Online|Offline/.../PASS|FAIL/.../*.csv
+
+ARUBA_PREMIC.zip
+└─ .../Online|Offline/.../PASS|FAIL/.../*.csv
+
+RawData_RD.zip
+└─ RawData_RD
+   ├─ MIC/**/*.csv
+   └─ PREMIC/**/*.csv
+```
+
+### RawData mapping
+
+RawData 不預設屬於 Online 或 Offline，而是先依 Test Type 分池，再用 SN + PASS/FAIL + timestamp proximity 配對回 FATP test run。
+
+| RawData CSV section | Summary sheet |
+| --- | --- |
+| `FR_Original` | `FR_original` |
+| `FR_1/12smooth` | `FR_1_12` |
+| `FR_1/3smooth` | 不使用 |
+
+### 標準 Summary sheets
+
+MIC / PREMIC、Online / Offline 四種報告共用相同 sheet template：
+
+```text
+00_Import_Log
+01_Metadata
+02_FR_original
+03_FR_1_3
+04_FR_1_12
+05_THD
+06_Phase
+07_Noise
+08_SNR
+```
+
+`Sealing` 已從 V13 規格移除。
+
+### 預計輸出
+
+```text
+summary_MIC_Online.xlsx
+summary_MIC_Offline.xlsx
+summary_PREMIC_Online.xlsx
+summary_PREMIC_Offline.xlsx
+```
+
+若此次沒有提供某個 Test Type 的 ZIP，則不產生該 Test Type 的報告。
+
+## V13 資料來源對照
+
+| Summary sheet | FATP / RawData source |
+| --- | --- |
+| `FR_original` | RawData_RD → `FR_Original` |
+| `FR_1_3` | FATP FR CSV → `FR` |
+| `FR_1_12` | RawData_RD → `FR_1/12smooth` |
+| `THD` | FATP FR CSV → `THD` |
+| `Phase` | FATP FR CSV → `Phase` |
+| `Noise` | FATP Noise CSV |
+| `SNR` | FATP Main Station CSV → `SNR` |
+
+## RawData matching 原則
+
+RawData CSV 本身不一定帶有 Online / Offline 標記，因此 V13 不直接靠 RawData path 猜測 Mode。
+
+匹配優先順序：
+
+1. Test Type 必須一致：MIC 只配 MIC，PREMIC 只配 PREMIC。
+2. SN 必須一致。
+3. PASS / FAIL 作為輔助條件。
+4. 比較 FATP FR timestamp，取時間差最近的 run。
+5. 必須符合可設定的 maximum time tolerance。
+6. 無可靠候選時標記 `UNMATCHED`。
+7. Online / Offline 候選同樣合理時標記 `AMBIGUOUS`，不可自動猜測。
+
+同一 SN 的歷史 retest 全部保留；另外標示 `Latest_Run`，不直接刪除舊 run。
+
+同一個 test run 若存在多份同類 CSV，V13 預設選 timestamp 最新的一份，並把被忽略的候選寫入 `00_Import_Log`。
+
+## Import / QC 要求
+
+V13 的 Import Log 至少要記錄：
+
+- Total runs / Unique SN
+- PASS / FAIL counts
+- Main / FR / Noise CSV found counts
+- Missing / duplicate / malformed CSV
+- Multiple same-type CSV selection
+- Frequency-axis mismatch
+- Missing / invalid SNR (`NaN`, empty 等不可當成 0)
+- RawData matched / unmatched / ambiguous counts
+- Empty RawData sections
+
+## Repository layout
+
+```text
+src/                 現有 v12 程式碼
+tools/               Windows launcher
+docs/                使用說明、review、V13 specification
+data/
+  snapshots/         資料包版本、大小與 SHA-256
+  manifests/         aggregate manifest / inventory
+  outputs/           可公開保存的輸出結果
+CHANGELOG.md          版本歷史與 V13 開發狀態
+requirements.txt     Python dependencies
+```
+
+## 執行 v12
 
 ```bash
 py -3 -m pip install -r requirements.txt
 python src/build_summary.py <原始資料夾路徑>
 ```
 
-Windows:
+Windows：
 
 ```text
 tools\run_build_summary.bat
 ```
 
-所選的原始資料夾必須包含:
+> v12 仍使用舊資料夾式 input；ZIP / MIC+PREMIC / Online+Offline / RawData matching / SNR sheet 是 V13 目標，不應誤認為已在 v12 實作。
 
-```text
-Online/
-RawData_RD/
-```
+## Public repository 注意事項
 
-輸出結果會寫成 `summary.xlsx`,存放在所選的原始資料夾內。
-
-## Review 中發現的重要結果判定問題
-
-目前 73 個 FR 檔案的檔名都包含 `FR_PASS`,但檔案內部 FR 段落的 `Test Result:` 卻是 73 筆全部為 `Fail`。THD 和 Phase 段落內部的結果則是 `Pass`。
-
-目前 v12 的實作是用 FR 檔名來判定 FR/THD/Phase 的 `Result` 欄位,所以就算內部 APx FR 段落回報 `Fail`,Excel 裡仍可能顯示 `PASS`。
-
-如果檔名 PASS 代表的是產線站別(FATP station)的最終判定,而 APx 段落結果是另一套規格的判定,那這個現象可能是刻意設計。在確認站別判定邏輯之前,**不要**把這兩種意義混為一談。建議的 V13 設計是拆成兩欄:
-
-- `Station Result`(站別結果)
-- `APx Section Result`(APx 段落結果)
-
-完整 review 請見 `docs/review_2026-09-07.md`,完整的 V13 待辦清單請見 `CHANGELOG.md`。
-
-## 資料說明
-
-原始資料包內含約 46.2 MB 的 WAV 錄音二進位檔案。這些二進位檔案**沒有存放在這個 repository 裡**——只有它們的數量、大小與 SHA-256 雜湊值記錄在 `data/snapshots/README.md`,用來驗證本機資料包是否一致。這裡沒有這些檔案,不代表本機的原始資料集已被刪除。
-
-## 資料公開揭露說明
-
-這個 repository 是公開的。截至 2026-09-08,目前收錄的檔案只記錄了整體數量、檔案大小總計與 SHA-256 雜湊值——沒有任何個別 DUT 序號或原始產測數值被寫進這個 repository。基於這點,已確認可以維持公開;未來若要提交原始 CSV/WAV 資料或個別序號,請重新檢視這則說明。
+此 repository 目前為 public。原始 FATP / RawData 可能包含 DUT SN、station、operator、SW version 與其他 factory metadata。提交 raw CSV / WAV / ZIP 前請確認這些資料允許公開揭露。
