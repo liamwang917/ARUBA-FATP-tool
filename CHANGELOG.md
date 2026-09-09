@@ -2,9 +2,13 @@
 
 This file tracks the ARUBA FATP tool's version history. Filenames no longer embed version numbers; use this file plus git/PR history for version context.
 
+## v13 implementation (2026-09-09)
+
+Implemented the v13.5 direct-ZIP pipeline with shared MIC/PREMIC scanning, Online/Offline discovery, Main Station and detailed curve parsers, optional RawData matching, retest selection, runtime QC, and the locked eight-sheet workbook writer. Added synthetic regression tests, Windows launcher support, and GitHub Actions CI. V12 remains available in `src/build_summary.py` during regression validation.
+
 ## v13.5 — RawData input made optional (2026-09-09)
 
-Documentation/specification revision only. Executable code remains v12. Workbook shape remains the v13.4 snapshot-locked contract.
+This section records the v13.5 contract decision. Workbook shape remains the v13.4 snapshot-locked contract.
 
 Confirmed decisions:
 
@@ -141,3 +145,4 @@ V13 behavior described above is not yet implemented in executable code.
 ## v9 and earlier
 
 Earlier internal iterations preceding the snapshot first tracked in this repository (2026-09-07). Not individually preserved here.
+

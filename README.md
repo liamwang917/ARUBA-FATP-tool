@@ -4,8 +4,8 @@ ARUBA FATP MIC / PREMIC 產測資料整理與 Excel Summary 工具。
 
 ## 目前狀態
 
-- `v12`：目前可執行版本，位於 `src/build_summary.py`
-- `v13`：規格已收斂到 **v13.5**；workbook shape 仍沿用 **v13.4 snapshot-locked**，尚未開始程式實作
+- `v12`：保留於 `src/build_summary.py`，供 V13 regression 完成前回歸比對
+- `v13`：目前主要版本，入口為 `python -m src.main`；workbook shape 沿用 **v13.4 snapshot-locked**
 - V13 規格：`docs/v13_spec_2026-09-08.md`
 - `docs/review_2026-09-07.md` 為 historical review，舊 workbook layout 已 superseded
 
@@ -41,7 +41,7 @@ RawData_PF_Mismatch    = blank
 
 MIC / PREMIC 共用同一套 scanner/parser/report pipeline；Online / Offline 分開產出報告。
 
-預計輸出：
+輸出：
 
 ```text
 summary_MIC_Online.xlsx
@@ -272,7 +272,9 @@ QC 不新增 summary workbook 分頁。
 ## Repository layout
 
 ```text
-src/                 現有 v12 程式碼；V13 implementation 尚未開始
+src/                 V13 modular pipeline；build_summary.py 保留 V12
+tests/               synthetic ZIP regression tests
+.github/workflows/   GitHub Actions CI
 tools/               Windows launcher
 docs/                使用說明 / historical review / V13 spec
 data/
@@ -283,15 +285,16 @@ CHANGELOG.md          版本歷史
 requirements.txt     Python dependency
 ```
 
-## 執行 v12
+## 執行 V13
 
-```bash
+```powershell
 py -3 -m pip install -r requirements.txt
-python src/build_summary.py <原始資料夾路徑>
+py -3 -m src.main ARUBA_MIC.zip [ARUBA_PREMIC.zip] [RawData_RD.zip]
 ```
 
-> V12 仍是舊 folder-based tool。ZIP input、MIC/PREMIC shared pipeline、Online/Offline split、optional RawData matching、item-level 05~08 Result 等是 V13 implementation contract，目前尚未寫進 executable code。
+V12 folder-based tool 暫時保留於 `src/build_summary.py`，供 regression comparison 使用。
 
 ## Public repository 注意事項
 
 此 repository 是 public。Raw FATP / RawData 可能包含 SN、MAC、operator、station、tester 等 factory metadata，因此原始 CSV / WAV / ZIP 與真實 production workbook 不應直接提交，除非已確認可公開揭露。
+

@@ -21,11 +21,11 @@ For `05_THD`, `06_Phase`, `07_Noise`, and `08_SNR`, derive `Result` from Main St
 ```powershell
 py -3 -m venv .venv
 .\.venv\Scripts\python -m pip install -r requirements.txt
-python src/build_summary.py <raw-data-folder>
-python -m py_compile src/build_summary.py
+python -m src.main ARUBA_MIC.zip [ARUBA_PREMIC.zip] [RawData_RD.zip]
+python -m unittest discover -s tests -v
 ```
 
-The builder writes `summary.xlsx` beside the input folder. The final command performs a syntax check.
+V13 writes one workbook per discovered Test Type/mode combination. `src/build_summary.py` remains the V12 regression entry point.
 
 ## Coding Style & Naming Conventions
 
@@ -40,4 +40,5 @@ Every behavior change must add or update automated tests when applicable. Run re
 Use short scoped commits such as `docs: clarify optional RawData behavior`. Pull requests should identify the contract or bug addressed, link issues, and describe validation and workbook changes.
 
 Before completing a coding task, run relevant tests; confirm no production/private data is staged; then report changed files, test commands and results, known limitations, and the commit SHA.
+
 

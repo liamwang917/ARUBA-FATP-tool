@@ -1,49 +1,35 @@
 # Usage
 
-Current tool: `src/build_summary.py` (v12 logic, "calculation-friendly" variant based on v9 logic). See `CHANGELOG.md` for full version history and the v13 backlog.
+V13 reads FATP and optional RawData ZIP packages directly. Do not extract them first.
 
-## What it does
+## Setup
 
-- Writes Frequency and data values as real Excel numbers when possible
-- Keeps SN / Time / Result as text
-- Lets pasted data calculate Mean / Max / Min / STDEV normally in Excel
+Install Python 3.10+ and the runtime dependency:
 
-## Carried over from earlier versions
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\python -m pip install -r requirements.txt
+```
 
-- `FR_1_3` frequency bug fixed
-- SN keeps only `AP...` before the first underscore
-- Same `Online` / `RawData_RD` path rules
-- Same section matching
+## Run
 
-## Note
+Supply `ARUBA_MIC.zip`, `ARUBA_PREMIC.zip`, or both. `RawData_RD.zip` is optional:
 
-Because values are numeric, Excel may display `80` instead of `80.000`, or `0` instead of `0.000`. This version is intended for calculation, not exact text appearance.
+```powershell
+py -3 -m src.main ARUBA_MIC.zip RawData_RD.zip --output-dir output
+py -3 -m src.main --mic C:\input\ARUBA_MIC.zip --premic C:\input\ARUBA_PREMIC.zip --output-dir C:\output
+```
 
-## Steps
+On Windows, `tools\run_build_summary.bat` accepts the same arguments. Running the BAT without arguments opens a ZIP-selection dialog.
 
-1. Install Python 3.10+ and `openpyxl`:
+Available matching controls:
 
-   ```bash
-   py -3 -m pip install -r requirements.txt
-   ```
+```text
+--rawdata-max-time-delta-sec 60
+--rawdata-ambiguous-margin-sec 5
+```
 
-2. Windows — double-click:
+Reports are created only for discovered Test Type/mode combinations, for example `summary_MIC_Online.xlsx`. Runtime QC warnings are printed to the console; they do not add an Import Log worksheet.
 
-   ```text
-   tools\run_build_summary.bat
-   ```
+V12 remains available temporarily as `python src/build_summary.py <raw-data-folder>` for regression comparison.
 
-   Or run directly:
-
-   ```bash
-   python src/build_summary.py <raw-data-folder>
-   ```
-
-3. Choose the main raw-data folder. It must contain:
-
-   - `Online/`
-   - `RawData_RD/`
-
-## Output
-
-`summary.xlsx` is written inside the selected raw-data folder.
