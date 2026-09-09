@@ -5,17 +5,39 @@ ARUBA FATP MIC / PREMIC 產測資料整理與 Excel Summary 工具。
 ## 目前狀態
 
 - `v12`：目前可執行版本，位於 `src/build_summary.py`
-- `v13`：規格已收斂到 **v13.4 snapshot-locked**，尚未開始程式實作
+- `v13`：規格已收斂到 **v13.5**；workbook shape 仍沿用 **v13.4 snapshot-locked**，尚未開始程式實作
 - V13 規格：`docs/v13_spec_2026-09-08.md`
 - `docs/review_2026-09-07.md` 為 historical review，舊 workbook layout 已 superseded
 
 ## V13 輸入
 
+FATP package：
+
 ```text
-ARUBA_MIC.zip
-ARUBA_PREMIC.zip
-RawData_RD.zip
+ARUBA_MIC.zip       optional individually
+ARUBA_PREMIC.zip    optional individually
 ```
+
+MIC / PREMIC 至少要提供其中一種，也可以兩種一起提供。
+
+RawData enrichment package：
+
+```text
+RawData_RD.zip      OPTIONAL
+```
+
+`RawData_RD.zip` 不是必要輸入。沒有提供 RawData 時，FATP summary 仍正常產生，不視為 error，也不標成 `UNMATCHED`。
+
+沒有 RawData 時：
+
+```text
+RawData_Result         = blank
+RawData_Match_Status   = NOT_PROVIDED
+RawData_Time_Delta_s   = blank
+RawData_PF_Mismatch    = blank
+```
+
+`02_FR_original`、`04_FR_1_12` 仍保留每個 FATP run 的資料列以維持 row alignment，但 RawData frequency data 留白。
 
 MIC / PREMIC 共用同一套 scanner/parser/report pipeline；Online / Offline 分開產出報告。
 
@@ -27,6 +49,8 @@ summary_MIC_Offline.xlsx
 summary_PREMIC_Online.xlsx
 summary_PREMIC_Offline.xlsx
 ```
+
+只產生本次有提供 Test Type 的報告；RawData 是否提供不影響 FATP workbook 是否生成。
 
 ## V13 最終 workbook 契約
 
@@ -62,9 +86,9 @@ V13 不會在 summary 裡自行建立：
 
 | Sheet | Source |
 | --- | --- |
-| `02_FR_original` | RawData `FR_Original` |
+| `02_FR_original` | RawData `FR_Original`；RawData 未提供時 data cells 留白 |
 | `03_FR_1_3` | FATP FR CSV detailed `FR` |
-| `04_FR_1_12` | RawData `FR_1/12smooth` |
+| `04_FR_1_12` | RawData `FR_1/12smooth`；RawData 未提供時 data cells 留白 |
 | `05_THD` | FATP FR CSV detailed `THD` |
 | `06_Phase` | FATP FR CSV detailed `Phase` |
 | `07_Noise` | FATP Noise CSV detailed spectrum |
@@ -159,6 +183,8 @@ V13 不解析 FR CSV 內部 `Test Result:`，也不建立 `Section_Result` / `AP
 
 ## RawData matching
 
+只有在有提供 `RawData_RD.zip` 時才啟動 RawData scanner / matcher。
+
 RawData 先依 MIC / PREMIC 分池，再匹配 FATP run。
 
 匹配原則：
@@ -171,7 +197,15 @@ RawData 先依 MIC / PREMIC 分池，再匹配 FATP run。
 6. 無安全候選 -> `UNMATCHED`
 7. 多個同樣合理候選 -> `AMBIGUOUS`
 
-`RawData_Result` 來源也是 filename `FR_PASS / FR_FAIL`。
+若完全沒有提供 RawData：
+
+```text
+RawData_Match_Status = NOT_PROVIDED
+```
+
+這不是 `UNMATCHED`，也不是 QC error。
+
+`RawData_Result` 來源是 filename `FR_PASS / FR_FAIL`。
 
 `RawData_PF_Mismatch` 比較：
 
@@ -212,9 +246,11 @@ Main Station CSV D/E 欄是 Low/High limit，但 **V13 暫不處理**：
 - path Test Type vs `station_id` mismatch
 - path Station vs `tester_id` mismatch
 - Path_Result vs FR_File_Result mismatch
-- RawData MATCHED / UNMATCHED / AMBIGUOUS
+- RawData MATCHED / UNMATCHED / AMBIGUOUS（只有在 RawData 有提供時）
 - invalid/missing THD / Phase / Noise / SNR result flag
 - frequency-axis mismatch
+
+未提供 `RawData_RD.zip` 是正常支援模式，不是 QC error。
 
 QC 不新增 summary workbook 分頁。
 
@@ -254,7 +290,7 @@ py -3 -m pip install -r requirements.txt
 python src/build_summary.py <原始資料夾路徑>
 ```
 
-> V12 仍是舊 folder-based tool。ZIP input、MIC/PREMIC shared pipeline、Online/Offline split、RawData matching、item-level 05~08 Result 等是 V13 implementation contract，目前尚未寫進 executable code。
+> V12 仍是舊 folder-based tool。ZIP input、MIC/PREMIC shared pipeline、Online/Offline split、optional RawData matching、item-level 05~08 Result 等是 V13 implementation contract，目前尚未寫進 executable code。
 
 ## Public repository 注意事項
 
