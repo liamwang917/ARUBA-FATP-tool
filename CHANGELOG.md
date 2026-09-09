@@ -2,6 +2,33 @@
 
 This file tracks the ARUBA FATP tool's version history. Filenames no longer embed version numbers; use this file plus git/PR history for version context.
 
+## v13.5 — RawData input made optional (2026-09-09)
+
+Documentation/specification revision only. Executable code remains v12. Workbook shape remains the v13.4 snapshot-locked contract.
+
+Confirmed decisions:
+
+1. `RawData_RD.zip` is an optional enrichment source, not a required V13 input.
+2. At least one FATP package must be supplied:
+   - `ARUBA_MIC.zip`
+   - `ARUBA_PREMIC.zip`
+   - or both.
+3. If RawData is not supplied, FATP summary generation continues normally.
+4. Runs are not labeled `UNMATCHED` when RawData is absent. Instead:
+
+   ```text
+   RawData_Result         = blank
+   RawData_Match_Status   = NOT_PROVIDED
+   RawData_Time_Delta_s   = blank
+   RawData_PF_Mismatch    = blank
+   ```
+
+5. `02_FR_original` and `04_FR_1_12` still retain one row per FATP run to preserve row alignment, but RawData-derived frequency cells remain blank.
+6. RawData scanner/matcher executes only when `RawData_RD.zip` is supplied.
+7. Absence of RawData is a supported operating mode, not a QC error.
+8. FATP output workbook generation is independent of RawData presence.
+9. Synthetic regression coverage should include a `RawData NOT_PROVIDED` case.
+
 ## v13.4 — snapshot-locked workbook contract (2026-09-09)
 
 Documentation/specification revision only. Executable code remains v12.
@@ -44,7 +71,7 @@ Confirmed decisions:
 13. MAC remains an internal/device identifier and is not required in the approved public-facing workbook snapshot.
 14. No true production XLSX snapshot is committed to this public repository because the reviewed snapshot contains real DUT identifiers and factory metadata.
 
-The next step is implementation against this v13.4 contract rather than further workbook redesign.
+The next step is implementation against the active v13.5 contract rather than further workbook redesign.
 
 ## v13.3 — limit evaluation deferred, result semantics clarified (2026-09-09)
 
@@ -72,7 +99,7 @@ Confirmed from real MIC data:
 - `station_id` can cross-check Test Type.
 - `sfis_get_mac` is a MAC address and must remain text if retained.
 
-Later revisions refine the interpretation of the second column and `tsr_id`; use v13.4 as the active contract.
+Later revisions refine the interpretation of the second column and `tsr_id`; use v13.5 as the active contract.
 
 ## v13.1 — spec gaps closed (2026-09-09)
 
@@ -96,7 +123,7 @@ Core V13 direction:
 - direct ZIP input;
 - MIC/PREMIC shared parser pipeline;
 - Online/Offline separated outputs;
-- independent RawData pool;
+- independent optional RawData pool;
 - standardized Excel workbook output;
 - no Sealing sheet.
 
