@@ -2,6 +2,38 @@
 
 This file tracks the ARUBA FATP tool's version history. Filenames no longer embed version numbers; use this file plus git/PR history for version context.
 
+## v13.3 — limit evaluation deferred, result semantics clarified (2026-09-09)
+
+Documentation/specification revision only. Executable code remains v12.
+
+Confirmed and locked for V13:
+
+1. Main Station CSV is a six-column format: `item_key,index,value,low_limit,high_limit,error_code`.
+2. `tsr_id` is a 15-digit timestamp (`YYYYMMDDHHMMSS` + tenths digit), e.g. `202607061915366` = 2026-07-06 19:15:36.6.
+3. `station_id` is used to cross-check Test Type derived from the path; `tester_id` should also be cross-checked against the station/tester path component when available.
+4. `sfis_get_mac` is a device MAC address and must remain text.
+5. The reviewed Main Station sample contains 21 FR station-check points plus scalar `Sensitivity`, `THD`, `Phase`, `Noise`, and `SNR`.
+6. Those Main Station values do **not** replace the detailed data sources. Detailed workbook sheets remain sourced from FR/Noise CSV and RawData as defined in section 7 of the spec.
+7. The Main Station 21-point/scalar values are retained internally for traceability and future template integration, but V13 does not add a dedicated `Station_Check` sheet.
+8. Main Station columns 4/5 are recognized as Low/High limits, but V13 does **not** evaluate or output limits. There is no `Station_Limits` sheet and no `Limit_Derived_Result`; a dedicated Limit Excel template will be integrated later.
+9. Result semantics now use explicit-source fields only: `Path_Result`, `FR_File_Result`, and `APx_Section_Result`. The ambiguous `Station_Result` field is removed.
+10. `FR_1_3` remains the historical compatibility sheet name in V13 even though the source is the detailed 80-point FR section.
+
+## v13.2 — Main Station CSV sample confirmed (2026-09-09)
+
+Documentation/specification revision only. No executable-code change.
+
+Confirmed from a real MIC PASS Main Station CSV sample:
+
+1. Main Station rows have six columns and columns 4/5 hold one- or two-sided station limits.
+2. Main Station includes a 21-point one-third-octave FR set plus `Sensitivity`, `THD`, `Phase`, `Noise`, and `SNR` values.
+3. `tsr_id` is 15 digits, not 14 digits.
+4. `station_id=ARUBA_MIC` can cross-check the Test Type inferred from the path.
+5. `sfis_get_mac` is a MAC address and must be governed as device-identifying metadata.
+6. MIC/PREMIC are confirmed structurally identical apart from the Test Type name.
+
+v13.3 supersedes the earlier v13.2 proposal to derive result state from station limits.
+
 ## v13.1 — spec gaps closed (2026-09-09)
 
 Documentation-only revision of `docs/v13_spec_2026-09-08.md`. No change to the v13.0 core architecture and no change to executable code.
@@ -61,11 +93,11 @@ Standard sheet layout:
 ### Data-source mapping
 
 - `FR_original` ← RawData `FR_Original`
-- `FR_1_3` ← FATP FR CSV `FR`
+- `FR_1_3` ← FATP FR CSV detailed `FR`
 - `FR_1_12` ← RawData `FR_1/12smooth`
-- `THD` ← FATP FR CSV `THD`
-- `Phase` ← FATP FR CSV `Phase`
-- `Noise` ← FATP Noise CSV
+- `THD` ← FATP FR CSV detailed `THD`
+- `Phase` ← FATP FR CSV detailed `Phase`
+- `Noise` ← FATP Noise CSV detailed spectrum
 - `SNR` ← FATP Main Station CSV `SNR`
 - RawData `FR_1/3smooth` is intentionally not used.
 
@@ -76,7 +108,7 @@ RawData is not assigned to Online or Offline based only on its path. Matching mu
 1. Same Test Type (`MIC` / `PREMIC`).
 2. Exact SN.
 3. PASS/FAIL as a supporting condition.
-4. Nearest FATP FR timestamp within a configurable maximum tolerance.
+4. Nearest FATP timestamp within a configurable maximum tolerance.
 5. `UNMATCHED` when no safe candidate exists.
 6. `AMBIGUOUS` when Online/Offline candidates are equally plausible.
 
@@ -86,12 +118,13 @@ Within a single run, if multiple same-type CSV files exist, select the latest ti
 
 ### Result semantics
 
-Keep these meanings separate:
+V13 keeps separate source-specific results:
 
-- `Station Result` — FATP/filename/path-level judgement.
-- `APx Section Result` — CSV section-level `Test Result:` judgement.
+- `Path_Result` — FATP path `PASS` / `FAIL` folder.
+- `FR_File_Result` — FR filename `FR_PASS` / `FR_FAIL`.
+- `APx_Section_Result` — CSV section-level `Test Result:` judgement.
 
-Do not collapse them until the FATP judgement logic is fully confirmed.
+Do not collapse them into one result field.
 
 ### Import / QC requirements
 
@@ -103,6 +136,8 @@ V13 Import Log must cover at least:
 - Missing / duplicate / malformed files
 - Frequency-axis mismatches
 - Missing / invalid SNR
+- `station_id` / `tester_id` path cross-check conflicts
+- Result-source disagreements
 - RawData matched / unmatched / ambiguous counts
 - Empty RawData sections
 - Same-run duplicate CSV selection decisions
@@ -119,6 +154,7 @@ V13 Import Log must cover at least:
 8. Add automatic N / Mean / Max / Min / Range / STDEV statistics.
 9. Convert timestamps to real Excel datetime; add freeze panes, AutoFilter, widths, number formats and PASS/FAIL conditional formatting.
 10. Add dashboard/charts only after the data model is stable.
+11. Integrate the dedicated Limit Excel template in a later version; do not implement limit evaluation in V13.
 
 ## v12 — current executable (`src/build_summary.py`)
 
@@ -129,7 +165,7 @@ Calculation-friendly version based on v9 logic.
 - Fixes the `FR_1_3` frequency bug present in earlier versions.
 - SN parsing keeps only the `AP...` prefix up to the first underscore.
 
-Known issue: FR/THD/Phase `Result` is derived from the FR filename (e.g. `FR_PASS`), which can disagree with the CSV's internal APx `Test Result:` field. This is planned to be corrected in V13 by preserving both result meanings.
+Known issue: FR/THD/Phase `Result` is derived from the FR filename (e.g. `FR_PASS`), which can disagree with the CSV's internal APx `Test Result:` field. V13 resolves this by preserving separate source-specific result fields.
 
 ## v9 and earlier
 
