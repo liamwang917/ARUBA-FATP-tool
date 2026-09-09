@@ -5,8 +5,9 @@ ARUBA FATP 麥克風 / PREMIC 產測資料整理與分析工具。
 ## 目前狀態
 
 - `v12`：目前可執行版本，位於 `src/build_summary.py`
-- `v13`：架構與資料規格已收斂，尚未完成程式實作
-- 最新 V13 規格：`docs/v13_spec_2026-09-08.md`
+- `v13`：架構與資料規格已收斂（現為 v13.1），尚未完成程式實作
+- 最新 V13 規格：`docs/v13_spec_2026-09-08.md`（revision v13.1，2026-09-09）
+- `docs/review_2026-09-07.md` 為 V13 之前的 review，已標示為 historical；其 workbook layout 已被規格取代
 - 最新資料快照與 SHA-256：`data/snapshots/README.md`
 
 ## v12 已驗證內容
@@ -115,9 +116,13 @@ RawData CSV 本身不一定帶有 Online / Offline 標記，因此 V13 不直接
 6. 無可靠候選時標記 `UNMATCHED`。
 7. Online / Offline 候選同樣合理時標記 `AMBIGUOUS`，不可自動猜測。
 
-同一 SN 的歷史 retest 全部保留；另外標示 `Latest_Run`，不直接刪除舊 run。
+具體可調參數（time tolerance、ambiguous margin、PASS/FAIL soft 或 strict、SN 正規化）定義於規格第 11.1 節，集中在 `config.py`。
+
+同一 SN 的歷史 retest 全部保留；另外標示 `Latest_Run`，不直接刪除舊 run。`Latest_Run` 以 `(Test_Type, Mode, SN)` 為分組鍵，依 `Test_Time` 排序，規格第 10.1 節。
 
 同一個 test run 若存在多份同類 CSV，V13 預設選 timestamp 最新的一份，並把被忽略的候選寫入 `00_Import_Log`。
+
+`UNMATCHED` / `AMBIGUOUS` 的 run 仍會在 `02_FR_original`、`04_FR_1_12` 保留一列，但 frequency 資料格留空白（不寫 0、不猜最近候選），以維持各 sheet 列數對齊。規格第 17 節。
 
 ## Import / QC 要求
 
@@ -127,11 +132,25 @@ V13 的 Import Log 至少要記錄：
 - PASS / FAIL counts
 - Main / FR / Noise CSV found counts
 - Missing / duplicate / malformed CSV
+- Unclassified CSV
 - Multiple same-type CSV selection
 - Frequency-axis mismatch
-- Missing / invalid SNR (`NaN`, empty 等不可當成 0)
+- Missing / invalid SNR（`NaN`, empty 等不可當成 0）
 - RawData matched / unmatched / ambiguous counts
 - Empty RawData sections
+
+## v13.1 新增定義
+
+v13.1 不改動 v13.0 的核心架構，只把原本未收斂的細節補齊：
+
+- CSV 分類規則（內容特徵優先、檔名為 fallback、無法判定則標 `UNCLASSIFIED`）—— 第 4.1 節
+- matcher 可調參數與預設值、RawData 單一消費規則 —— 第 11.1 / 11.2 節
+- `Latest_Run` 分組鍵與排序定義 —— 第 10.1 節
+- `01_Metadata` 欄位契約（含 operator / tester / SW version / sensitivity 等）—— 第 16 節
+- `UNMATCHED` / `AMBIGUOUS` 的下游寫入行為與列對齊規則 —— 第 17 節
+- 統計區塊、時間型別、凍結窗格 / AutoFilter / 條件格式 —— 第 18 節
+- 公開 repo 的資料治理原則 —— 第 19 節
+- 尚需用實際資料確認的項目（標 `PROPOSED`）—— 第 21 節
 
 ## Repository layout
 
@@ -164,4 +183,4 @@ tools\run_build_summary.bat
 
 ## Public repository 注意事項
 
-此 repository 目前為 public。原始 FATP / RawData 可能包含 DUT SN、station、operator、SW version 與其他 factory metadata。提交 raw CSV / WAV / ZIP 前請確認這些資料允許公開揭露。
+此 repository 目前為 public。原始 FATP / RawData 可能包含 DUT SN、station、operator、SW version 與其他 factory metadata。提交 raw CSV / WAV / ZIP 前請確認這些資料允許公開揭露。完整治理原則見規格第 19 節。

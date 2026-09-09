@@ -2,6 +2,24 @@
 
 This file tracks the ARUBA FATP tool's version history. Filenames no longer embed version numbers; use this file plus git/PR history for version context.
 
+## v13.1 — spec gaps closed (2026-09-09)
+
+Documentation-only revision of `docs/v13_spec_2026-09-08.md`. No change to the v13.0 core architecture and no change to executable code.
+
+Added to the specification:
+
+1. CSV classification rules — content signature is authoritative, filename token is fallback, unresolved files are marked `UNCLASSIFIED` and logged rather than guessed (spec 4.1).
+2. Matcher configuration parameters with proposed defaults: `rawdata_max_time_delta_sec`, `rawdata_ambiguous_margin_sec`, `rawdata_pass_fail_mode`, `sn_normalisation` (spec 11.1). Each RawData file is consumed by at most one run (spec 11.2).
+3. `Latest_Run` definition — group key `(Test_Type, Mode, SN)`, ordered by `Test_Time` then `Run_ID`, exactly one `TRUE` per group (spec 10.1).
+4. `01_Metadata` column contract, including the station fields the 2026-09-07 review asked to preserve (spec 16).
+5. Downstream behaviour for `UNMATCHED` / `AMBIGUOUS` runs — the row is kept and data cells left blank, so all sheets stay row-aligned (spec 17).
+6. Workbook formatting and per-frequency statistics block: `N` / `Mean` / `Max` / `Min` / `Range` / `STDEV`, real Excel datetimes, freeze panes, AutoFilter, conditional formatting. Dashboard explicitly deferred (spec 18).
+7. Data governance rules for this public repository (spec 19).
+8. Regression-test fixture expectations (spec 20).
+9. An open-questions section collecting every `PROPOSED` value that still needs confirmation against production data (spec 21).
+
+Also marked `docs/review_2026-09-07.md` as historical and its suggested workbook layout as superseded, since it still listed `Sealing`, `Dashboard` and `Statistics` sheets that V13 does not use.
+
 ## v13 — architecture/spec locked, implementation pending
 
 The V13 data model and report contract were updated on 2026-09-08. Implementation is not yet complete.
