@@ -1,34 +1,15 @@
 # ARUBA-FATP-tool
 
-ARUBA FATP 麥克風 / PREMIC 產測資料整理與分析工具。
+ARUBA FATP MIC / PREMIC 產測資料整理與 Excel Summary 工具。
 
 ## 目前狀態
 
 - `v12`：目前可執行版本，位於 `src/build_summary.py`
-- `v13`：架構與資料規格已收斂（現為 v13.3），尚未完成程式實作
-- 最新 V13 規格：`docs/v13_spec_2026-09-08.md`（revision v13.3，2026-09-09）
-- `docs/review_2026-09-07.md` 為 V13 之前的 review，已標示為 historical；其 workbook layout 已被規格取代
-- 最新資料快照與 SHA-256：`data/snapshots/README.md`
+- `v13`：規格已收斂到 **v13.4 snapshot-locked**，尚未開始程式實作
+- V13 規格：`docs/v13_spec_2026-09-08.md`
+- `docs/review_2026-09-07.md` 為 historical review，舊 workbook layout 已 superseded
 
-## v12 已驗證內容
-
-2026-08-26 MIC FATP 資料集：
-
-- DUT 資料夾：73
-- Unique SN：73
-- CSV：219
-- WAV：146
-- FR / THD / Phase：各 73 × 80 frequency points
-- Noise：73 × 800 frequency points
-- 73 台 DUT frequency axis 已確認一致
-
-目前 v12 的 FR / THD / Phase `Result` 仍由 FR filename 的 `PASS/FAIL` 推導；APx CSV section 內的 `Test Result:` 可能與 filename result 不同。V13 將不同來源的 result 分開保存。
-
-## V13 目標架構
-
-V13 改為直接讀 ZIP，不要求使用者先解壓縮，也不再假設 `Online` 下一層就是 DUT folder。
-
-### 輸入來源
+## V13 輸入
 
 ```text
 ARUBA_MIC.zip
@@ -36,72 +17,24 @@ ARUBA_PREMIC.zip
 RawData_RD.zip
 ```
 
-MIC 與 PREMIC 的 FATP 路徑與 CSV 結構相同，只是最上層 Test Type 名稱不同，因此共用同一套 scanner/parser/report builder。
+MIC / PREMIC 共用同一套 scanner/parser/report pipeline；Online / Offline 分開產出報告。
+
+預計輸出：
 
 ```text
-ARUBA_MIC.zip
-└─ .../Online|Offline/.../PASS|FAIL/.../*.csv
-
-ARUBA_PREMIC.zip
-└─ .../Online|Offline/.../PASS|FAIL/.../*.csv
-
-RawData_RD.zip
-└─ RawData_RD
-   ├─ MIC/**/*.csv
-   └─ PREMIC/**/*.csv
+summary_MIC_Online.xlsx
+summary_MIC_Offline.xlsx
+summary_PREMIC_Online.xlsx
+summary_PREMIC_Offline.xlsx
 ```
 
-### RawData mapping
+## V13 最終 workbook 契約
 
-RawData 不預設屬於 Online 或 Offline，而是先依 Test Type 分池，再用 SN + PASS/FAIL + timestamp proximity 配對回 FATP test run。
+經實際 MIC Online 快照確認後，V13 workbook 不再有 `00_Import_Log` sheet。
 
-| RawData CSV section | Summary sheet |
-| --- | --- |
-| `FR_Original` | `FR_original` |
-| `FR_1/12smooth` | `FR_1_12` |
-| `FR_1/3smooth` | 不使用 |
-
-### Main Station CSV 已確認資訊
-
-實際 sample 已確認 Main Station CSV：
-
-- 每列固定 6 欄：`item_key,index,value,low_limit,high_limit,error_code`
-- `tsr_id` 為 15 位時間碼，例如 `202607061915366` = 2026-07-06 19:15:36.6
-- `station_id=ARUBA_MIC`，可與 path 推出的 Test Type 交叉驗證
-- `tester_id` 可與 FATP path 的 station/tester folder 交叉驗證
-- `sfis_get_mac` 為 MAC address，必須當文字保存
-- Main Station CSV 另外包含 21-point FR、Sensitivity、THD、Phase、Noise、SNR scalar/check values
-
-同一個 sample 的 21-point FR、1 kHz THD/Phase/Noise 與詳細 FR/Noise CSV 對應值一致，因此 V13 把 Main Station 這些值定位成 station-check/scalar data，不拿它們取代詳細曲線來源。
-
-### Limit scope
-
-Main Station CSV 第 4/5 欄雖然是 Low/High limit，但 **V13 暫不做 Limit 判定與輸出**：
-
-- 不建立 Station Limit sheet
-- 不建立 `Limit_Derived_Result`
-- 不用 limit 推導 PASS/FAIL
-- 不把 limit 當作 Import Log 的工程 limit table
-- 後續由專用 Limit Excel 模板另行整合
-
-V13 只需辨識這兩欄的位置，保留未來擴充能力。
-
-### Result 欄位
-
-V13 不使用來源模糊的單一 `Station_Result`，改為保留明確來源：
-
-- `Path_Result`：來自 FATP path 的 `PASS` / `FAIL` folder
-- `FR_File_Result`：來自選定 FR filename 的 `FR_PASS` / `FR_FAIL`
-- `APx_Section_Result`：來自 FR CSV section 內的 `Test Result:`
-
-不同 result 來源若不一致，只記錄 QC，不自動覆蓋其中任何一個。
-
-### 標準 Summary sheets
-
-MIC / PREMIC、Online / Offline 四種報告共用相同 sheet template：
+標準分頁：
 
 ```text
-00_Import_Log
 01_Metadata
 02_FR_original
 03_FR_1_3
@@ -112,102 +45,206 @@ MIC / PREMIC、Online / Offline 四種報告共用相同 sheet template：
 08_SNR
 ```
 
-`Sealing` 已從 V13 規格移除。
+`Sealing` 已移除。
 
-### 預計輸出
+V13 不會在 summary 裡自行建立：
+
+- Import Log worksheet
+- N / Mean / Max / Min / Range / STDEV 統計區塊
+- Dashboard / chart
+- Station Limit sheet
+- `Limit_Derived_Result`
+- APx / Section Result
+
+這些分析與 limit/report template 功能留給後續 Excel 報告模板處理。
+
+## 資料來源
+
+| Sheet | Source |
+| --- | --- |
+| `02_FR_original` | RawData `FR_Original` |
+| `03_FR_1_3` | FATP FR CSV detailed `FR` |
+| `04_FR_1_12` | RawData `FR_1/12smooth` |
+| `05_THD` | FATP FR CSV detailed `THD` |
+| `06_Phase` | FATP FR CSV detailed `Phase` |
+| `07_Noise` | FATP Noise CSV detailed spectrum |
+| `08_SNR` | Main Station CSV `SNR` scalar |
+
+RawData `FR_1/3smooth` 不使用。
+
+`FR_1_3` 為歷史相容名稱；目前實際內容仍是 FATP FR CSV 的 80-point detailed FR section。
+
+## Result 規則
+
+### Path_Result
+
+來源：FATP ZIP path 的 `PASS` / `FAIL` folder。
+
+### FR_File_Result
+
+來源：選定 FR CSV filename：
 
 ```text
-summary_MIC_Online.xlsx
-summary_MIC_Offline.xlsx
-summary_PREMIC_Online.xlsx
-summary_PREMIC_Offline.xlsx
+*_FR_PASS_*.csv -> PASS
+*_FR_FAIL_*.csv -> FAIL
 ```
 
-若此次沒有提供某個 Test Type 的 ZIP，則不產生該 Test Type 的報告。
+只保留在：
 
-## V13 資料來源對照
+```text
+01_Metadata
+02_FR_original
+03_FR_1_3
+04_FR_1_12
+```
 
-| Summary sheet | FATP / RawData source |
-| --- | --- |
-| `FR_original` | RawData_RD → `FR_Original` |
-| `FR_1_3` | FATP FR CSV → detailed `FR` |
-| `FR_1_12` | RawData_RD → `FR_1/12smooth` |
-| `THD` | FATP FR CSV → detailed `THD` |
-| `Phase` | FATP FR CSV → detailed `Phase` |
-| `Noise` | FATP Noise CSV → detailed spectrum |
-| `SNR` | FATP Main Station CSV → `SNR` |
+### 05~08 的 Result
 
-`FR_1_3` 名稱在 V13 先保留相容性；目前實際來源仍是 FATP FR CSV 的 80-point detailed FR section。
+`05_THD`、`06_Phase`、`07_Noise`、`08_SNR` 不顯示 `FR_File_Result`。
 
-## RawData matching 原則
+各頁自己的 `Result` 直接讀 Main Station CSV 對應 item 的 **B 欄**：
 
-RawData CSV 本身不一定帶有 Online / Offline 標記，因此 V13 不直接靠 RawData path 猜測 Mode。
+```text
+1 -> PASS
+0 -> FAIL
+沒有該 item / flag -> blank
+```
 
-匹配優先順序：
+對應項目：
 
-1. Test Type 必須一致：MIC 只配 MIC，PREMIC 只配 PREMIC。
-2. SN 必須一致。
-3. PASS / FAIL 作為輔助條件。
-4. 比較 FATP timestamp，取時間差最近的 run。
-5. 必須符合可設定的 maximum time tolerance。
-6. 無可靠候選時標記 `UNMATCHED`。
-7. Online / Offline 候選同樣合理時標記 `AMBIGUOUS`，不可自動猜測。
+```text
+05_THD   -> THD row
+06_Phase -> Phase row
+07_Noise -> Noise row
+08_SNR   -> SNR row
+```
 
-具體可調參數定義於規格第 11.1 節，集中在 `config.py`。
+V13 不解析 FR CSV 內部 `Test Result:`，也不建立 `Section_Result` / `APx_Section_Result`。
 
-同一 SN 的歷史 retest 全部保留；另外標示 `Latest_Run`，不直接刪除舊 run。`Latest_Run` 以 `(Test_Type, Mode, SN)` 為分組鍵，依 `Test_Time` 排序。
+## Main Station CSV
 
-同一個 test run 若存在多份同類 CSV，V13 預設選 timestamp 最新的一份，並把被忽略的候選寫入 `00_Import_Log`。
+確認格式：
 
-`UNMATCHED` / `AMBIGUOUS` 的 run 仍會在 `02_FR_original`、`04_FR_1_12` 保留一列，但 frequency 資料格留空白（不寫 0、不猜最近候選），以維持各 sheet 列數對齊。
+```text
+<item_key>,<result_flag>,<value>,<low_limit>,<high_limit>,<error_code>
+```
 
-## Import / QC 要求
+主要 metadata：
 
-V13 的 Import Log 至少要記錄：
+- `uut_sn`
+- `tsr_id`
+- `op_id`
+- `station_id`
+- `tester_id`
+- `test_sw_ver`
+- `test_start_time`
+- `sfis_get_mac`
+- `test_end_time`
+- `total_test_time`
 
-- Total runs / Unique SN
-- PASS / FAIL counts
-- Main / FR / Noise CSV found counts
-- Missing / duplicate / malformed CSV
-- Unclassified CSV
-- Multiple same-type CSV selection
-- Frequency-axis mismatch
-- Missing / invalid SNR（`NaN`, empty 等不可當成 0）
-- `station_id` vs path Test Type conflict
-- `tester_id` vs path station/tester-folder conflict
-- `Path_Result` / `FR_File_Result` / `APx_Section_Result` disagreement
-- RawData matched / unmatched / ambiguous counts
-- RawData PASS/FAIL mismatch
-- Empty RawData sections
+主要 measurement item：
 
-Limit values 不在 V13 QC / report scope 內。
+- FR100 ... FR7500
+- Sensitivity
+- THD
+- Phase
+- Noise
+- SNR
 
-## v13.3 收斂內容
+`Station` 取 FATP path 的 station folder，例如 `ARUBA-MIC-01`；`tester_id` 用來 cross-check。
 
-v13.3 將 Main Station CSV 實際 sample 驗證結果與 Limit scope 正式鎖定：
+`station_id=ARUBA_MIC / ARUBA_PREMIC` 用來與 path Test Type cross-check。
 
-- Main Station CSV 6 欄格式、15-digit `tsr_id`、`station_id`、`tester_id`、`sfis_get_mac` 已寫入規格
-- Main Station 21-point FR / scalar THD / Phase / Noise 不取代 detailed FR/Noise CSV
-- `FR_1_3` / `THD` / `Phase` / `Noise` 繼續使用 detailed source
-- Main Station station-check values 保留於 parser/internal model，供後續 template integration 使用
-- Limit evaluation/output 延後，不做 `Limit_Derived_Result`
-- `Station_Result` 取消，改用明確來源的 `Path_Result` / `FR_File_Result` / `APx_Section_Result`
-- 不新增 `Station_Check` / `Station_Limits` sheet
+`tsr_id` 在 V13 當完整 opaque `Run_ID` 保存；`Test_Time` 使用 `test_start_time`。
 
-完整規則請見 `docs/v13_spec_2026-09-08.md`。
+## RawData matching
+
+RawData 先依 MIC / PREMIC 分池，再匹配 FATP run。
+
+匹配原則：
+
+1. Test Type 一致
+2. SN exact match（正規化後）
+3. RawData filename 的 `FR_PASS/FR_FAIL` 作輔助條件
+4. 以 selected FATP FR timestamp 做時間 proximity matching
+5. 超過 tolerance 不配
+6. 無安全候選 -> `UNMATCHED`
+7. 多個同樣合理候選 -> `AMBIGUOUS`
+
+`RawData_Result` 來源也是 filename `FR_PASS / FR_FAIL`。
+
+`RawData_PF_Mismatch` 比較：
+
+```text
+RawData_Result vs FR_File_Result
+```
+
+不拿 RawData Result 跟 Path_Result 比。
+
+目前 60 秒 matching tolerance 仍屬 **PROPOSED**，需要同批 FATP + RawData 再驗證。
+
+## SNR
+
+`08_SNR` 直接使用 Main Station CSV `SNR` item：
+
+- B 欄 1/0 -> PASS/FAIL
+- C 欄 -> SNR value
+- 沒有 SNR row -> Result/value 留空
+
+不自行計算替代 SNR。
+
+## Limit
+
+Main Station CSV D/E 欄是 Low/High limit，但 **V13 暫不處理**：
+
+- 不輸出 limit
+- 不用 limit 判定 PASS/FAIL
+- 不建立 limit sheet
+
+後續會套用專用 Limit Excel 模板。
+
+## QC
+
+雖然 workbook 不再有 Import Log sheet，程式仍應保留 runtime QC / console log，例如：
+
+- missing Main / FR / Noise CSV
+- duplicate FR CSV
+- path Test Type vs `station_id` mismatch
+- path Station vs `tester_id` mismatch
+- Path_Result vs FR_File_Result mismatch
+- RawData MATCHED / UNMATCHED / AMBIGUOUS
+- invalid/missing THD / Phase / Noise / SNR result flag
+- frequency-axis mismatch
+
+QC 不新增 summary workbook 分頁。
+
+## Retest
+
+保留所有歷史 run，增加 `Latest_Run`。
+
+分組：
+
+```text
+(Test_Type, Mode, SN)
+```
+
+排序：
+
+1. `Test_Time = test_start_time`
+2. `Run_ID` text tie-break
 
 ## Repository layout
 
 ```text
-src/                 現有 v12 程式碼
+src/                 現有 v12 程式碼；V13 implementation 尚未開始
 tools/               Windows launcher
-docs/                使用說明、review、V13 specification
+docs/                使用說明 / historical review / V13 spec
 data/
-  snapshots/         資料包版本、大小與 SHA-256
-  manifests/         aggregate manifest / inventory
-  outputs/           可公開保存的輸出結果
-CHANGELOG.md          版本歷史與 V13 開發狀態
-requirements.txt     Python dependencies
+  snapshots/         package metadata / SHA-256
+  manifests/         aggregate manifest
+  outputs/           僅放可公開的輸出
+CHANGELOG.md          版本歷史
+requirements.txt     Python dependency
 ```
 
 ## 執行 v12
@@ -217,14 +254,8 @@ py -3 -m pip install -r requirements.txt
 python src/build_summary.py <原始資料夾路徑>
 ```
 
-Windows：
-
-```text
-tools\run_build_summary.bat
-```
-
-> v12 仍使用舊資料夾式 input；ZIP / MIC+PREMIC / Online+Offline / RawData matching / SNR sheet 是 V13 目標，不應誤認為已在 v12 實作。
+> V12 仍是舊 folder-based tool。ZIP input、MIC/PREMIC shared pipeline、Online/Offline split、RawData matching、item-level 05~08 Result 等是 V13 implementation contract，目前尚未寫進 executable code。
 
 ## Public repository 注意事項
 
-此 repository 目前為 public。原始 FATP / RawData 可能包含 DUT SN、MAC address、station、operator、tester、SW version 與其他 factory metadata。提交 raw CSV / WAV / ZIP 或生成 workbook 前請確認這些資料允許公開揭露。完整治理原則見規格第 19 節。
+此 repository 是 public。Raw FATP / RawData 可能包含 SN、MAC、operator、station、tester 等 factory metadata，因此原始 CSV / WAV / ZIP 與真實 production workbook 不應直接提交，除非已確認可公開揭露。
