@@ -1,0 +1,6 @@
+package,purpose,zip_bytes,sha256,file_entries,uncompressed_bytes,csv_count,wav_count,status
+ARUBA_MIC.zip,V13 MIC FATP architecture validation,328061370,10b79be3b21d10635026a54f15b17665d078a17dc79a7331d8659507ffaba8b6,3580,474525194,2148,1432,reviewed
+RawData_RD.zip,V13 RawData mapping and MIC/PREMIC pool validation,3396862,72385ff92756effe8fe36bb6775e5ab1283e85b713117b8915ce415edb571ead,1689,19586132,1683,0,reviewed
+ARUBA_PREMIC.zip,PREMIC regression validation,,,,,,,not_yet_supplied
+ARUBA_FATP_current_progress_2026-09-07.zip,V12 historical snapshot,34085179,da5ec5114aa72066b6b35d1936c1c0b9f5fe80757938ff753da47ee96f1727aa,369,49061446,219,146,reviewed
+raw_csv_snapshot_2026-08-26.zip,V12 numerical CSV snapshot,481437,2453bf0352f78cfe58b0684b2f5138e812f90671f0a1e7d189100450b3a06298,219,2398502,219,0,reviewed

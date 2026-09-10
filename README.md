@@ -1,91 +1,326 @@
 # ARUBA-FATP-tool
 
-ARUBA FATP 麥克風產測資料整理與分析工具。
+ARUBA FATP MIC / PREMIC 產測資料整理與 Excel Summary 工具。
 
-## 目前快照(Current snapshot)
+## 目前狀態
 
-- 快照日期:2026-09-07
-- 來源資料集:2026-08-26 ARUBA MIC FATP 產測批次
-- DUT 資料夾數:73
-- 唯一序號(SN)數:73
-- 原始 CSV 檔案數:219
-- WAV 檔案數:146
-- 既有 Excel 摘要檔:1 份
-- 目前解析工具版本:v12(`src/build_summary.py`;詳見 `CHANGELOG.md`)
+- `v12`：保留於 `src/build_summary.py`，供 regression comparison
+- `v13.5 implementation`：保留於 Git history，已由 V13.6 supersede
+- `v13.6`：**目前 active implementation**，入口為 `python -m src.main`
+- V13 規格：`docs/v13_spec_2026-09-08.md`
 
-### 解析輸出涵蓋範圍
+## V13.6 輸入
 
-| 分頁 | 目前資料 |
-| --- | ---: |
-| FR_original | 0 筆(RawData_RD 目前為空) |
-| FR_1_3 | 73 台 DUT × 80 個頻率點 |
-| FR_1_12 | 0 筆(RawData_RD 目前為空) |
-| THD | 73 台 DUT × 80 個頻率點 |
-| Phase | 73 台 DUT × 80 個頻率點 |
-| Noise | 73 台 DUT × 800 個頻率點 |
-| Sealing | 0 筆(此資料集沒有 Sealing CSV) |
-
-目前資料集中所有 73 台 DUT 的頻率軸都經過檢查,結果一致。
-
-## 專案結構(Repository layout)
+FATP package 至少一種：
 
 ```text
-src/
-  build_summary.py         目前的解析器 / Excel 摘要產生器(v12 邏輯)
-tools/
-  run_build_summary.bat    Windows 執行捷徑
-docs/
-  usage.md                 使用說明
-  review_2026-09-07.md     工程 review 報告 + V13 待辦清單(帶日期的歷史紀錄)
-data/
-  snapshots/               資料集組成、數量與 SHA-256 完整性紀錄
-  manifests/               各資料集的清單 / 完整性紀錄(佔位用,尚未填入內容)
-  outputs/                 若有收錄,存放產生的分析結果(佔位用,尚未填入內容)
-CHANGELOG.md               版本歷史(v9 → v12)與 V13 待辦清單
-requirements.txt           Python 相依套件
+ARUBA_MIC.<archive>
+ARUBA_PREMIC.<archive>
 ```
 
-## 執行方式(Run)
-
-完整使用說明請見 `docs/usage.md`。快速開始:
-
-```bash
-py -3 -m pip install -r requirements.txt
-python src/build_summary.py <原始資料夾路徑>
-```
-
-Windows:
+RawData：
 
 ```text
-tools\run_build_summary.bat
+RawData_RD.<archive>    OPTIONAL
 ```
 
-所選的原始資料夾必須包含:
+V13.6 的 archive selector 不可只支援 ZIP。
+
+要求支援：
 
 ```text
-Online/
-RawData_RD/
+.zip
+.7z
+.tar
+.tar.gz
+.tgz
 ```
 
-輸出結果會寫成 `summary.xlsx`,存放在所選的原始資料夾內。
+RawData 沒有提供時，FATP summary 仍正常產生，並使用：
 
-## Review 中發現的重要結果判定問題
+```text
+RawData_Match_Status = NOT_PROVIDED
+```
 
-目前 73 個 FR 檔案的檔名都包含 `FR_PASS`,但檔案內部 FR 段落的 `Test Result:` 卻是 73 筆全部為 `Fail`。THD 和 Phase 段落內部的結果則是 `Pass`。
+不是 `UNMATCHED`，也不是 error。
 
-目前 v12 的實作是用 FR 檔名來判定 FR/THD/Phase 的 `Result` 欄位,所以就算內部 APx FR 段落回報 `Fail`,Excel 裡仍可能顯示 `PASS`。
+## 輸出
 
-如果檔名 PASS 代表的是產線站別(FATP station)的最終判定,而 APx 段落結果是另一套規格的判定,那這個現象可能是刻意設計。在確認站別判定邏輯之前,**不要**把這兩種意義混為一談。建議的 V13 設計是拆成兩欄:
+依實際發現的 Test Type / Mode 產生：
 
-- `Station Result`(站別結果)
-- `APx Section Result`(APx 段落結果)
+```text
+summary_MIC_Online.xlsx
+summary_MIC_Offline.xlsx
+summary_PREMIC_Online.xlsx
+summary_PREMIC_Offline.xlsx
+```
 
-完整 review 請見 `docs/review_2026-09-07.md`,完整的 V13 待辦清單請見 `CHANGELOG.md`。
+## V13.6 workbook contract
 
-## 資料說明
+每份 workbook 固定：
 
-原始資料包內含約 46.2 MB 的 WAV 錄音二進位檔案。這些二進位檔案**沒有存放在這個 repository 裡**——只有它們的數量、大小與 SHA-256 雜湊值記錄在 `data/snapshots/README.md`,用來驗證本機資料包是否一致。這裡沒有這些檔案,不代表本機的原始資料集已被刪除。
+```text
+01_Metadata
+02_FR_original
+03_FR_1_3
+04_FR_1_12
+05_THD
+06_Phase
+07_Noise
+08_SNR
+09_Sensitivity
+```
 
-## 資料公開揭露說明
+不產生：
 
-這個 repository 是公開的。截至 2026-09-08,目前收錄的檔案只記錄了整體數量、檔案大小總計與 SHA-256 雜湊值——沒有任何個別 DUT 序號或原始產測數值被寫進這個 repository。基於這點,已確認可以維持公開;未來若要提交原始 CSV/WAV 資料或個別序號,請重新檢視這則說明。
+- `00_Import_Log`
+- N / Mean / Max / Min / Range / STDEV
+- Dashboard / chart
+- Station Limit sheet
+- `Limit_Derived_Result`
+- APx / Section Result
+- Sealing
+
+## Test_Time — V13.6
+
+`Test_Time` 跟著該 sheet **實際資料來源 CSV filename 的時間**，不再全部使用 `test_start_time`。
+
+| Sheet | Test_Time source |
+| --- | --- |
+| `01_Metadata` | Main Station CSV filename |
+| `02_FR_original` | matched RawData CSV filename |
+| `03_FR_1_3` | selected FR CSV filename |
+| `04_FR_1_12` | matched RawData CSV filename |
+| `05_THD` | selected FR CSV filename |
+| `06_Phase` | selected FR CSV filename |
+| `07_Noise` | selected Noise CSV filename |
+| `08_SNR` | Main Station CSV filename |
+| `09_Sensitivity` | Main Station CSV filename |
+
+例如：
+
+```text
+SR1M08GD263600063_202609101633182.csv
+```
+
+`Test_Time` 使用前 14 碼：
+
+```text
+20260910163318 -> 2026-09-10 16:33:18
+```
+
+完整 15 碼仍可作為原始 identifier 保存；不假設最後一碼是 0.1 秒。
+
+## Main Station CSV
+
+格式：
+
+```text
+<item_key>,<result_flag>,<value>,<low_limit>,<high_limit>,<error_code>
+```
+
+- A欄：item key
+- B欄：item result flag（適用 measurement item）
+  - `1` → PASS
+  - `0` → FAIL
+  - missing/invalid → blank
+- C欄：value
+- D/E：Limit，V13 不使用
+- F：step/error code，summary 不需要
+
+### Metadata 完整擷取
+
+V13.6 不再只抓少數白名單欄位。
+
+`01_Metadata` 要把 Main Station CSV **所有 A欄 item_key 與對應 C欄 value** 都保留下來，例如：
+
+```text
+uut_sn
+tsr_id
+op_id
+station_id
+tester_id
+test_sw_ver
+test_start_time
+sfis_get_mac
+FR100 ... FR7500
+Sensitivity
+THD
+Phase
+Noise
+SNR
+test_end_time
+total_test_time
+```
+
+如果不同 run 出現新的 item key，Metadata header 取所有 run 的 union；缺少的 item 留白。
+
+## Data source mapping
+
+| Sheet | Source |
+| --- | --- |
+| `01_Metadata` | Main Station A→C complete key/value set + run context |
+| `02_FR_original` | RawData `FR_Original` |
+| `03_FR_1_3` | FATP FR CSV detailed `FR` |
+| `04_FR_1_12` | RawData `FR_1/12smooth` |
+| `05_THD` | FATP FR CSV detailed `THD` |
+| `06_Phase` | FATP FR CSV detailed `Phase` |
+| `07_Noise` | FATP Noise CSV detailed spectrum |
+| `08_SNR` | Main Station `SNR` |
+| `09_Sensitivity` | Main Station `Sensitivity` |
+
+RawData `FR_1/3smooth` 不使用。
+
+## Result rules
+
+### `03_FR_1_3`
+
+`FR_File_Result` 來源：selected FR filename：
+
+```text
+*_FR_PASS_*.csv -> PASS
+*_FR_FAIL_*.csv -> FAIL
+```
+
+### `05_THD` ~ `09_Sensitivity`
+
+各自 Result 讀 Main Station 對應 item 的 B欄：
+
+```text
+THD         -> THD row
+Phase       -> Phase row
+Noise       -> Noise row
+SNR         -> SNR row
+Sensitivity -> Sensitivity row
+
+1 -> PASS
+0 -> FAIL
+missing/invalid -> blank
+```
+
+不解析 FR CSV 內部 `Test Result:`。
+
+## 02 / 04 RawData sheet — V13.6
+
+`02_FR_original` 與 `04_FR_1_12` leading columns 固定：
+
+```text
+SN
+Test_Time
+RawData_Match_Status
+<frequency data...>
+```
+
+這兩頁不要顯示：
+
+```text
+Path_Result
+FR_File_Result
+RawData_Result
+RawData_PF_Mismatch
+```
+
+RawData filename result/mismatch 可保留在 internal model / Metadata 做 traceability，但不要出現在 02/04。
+
+## 08_SNR / 09_Sensitivity
+
+### `08_SNR`
+
+```text
+SN
+Test_Time
+Path_Result
+Result
+SNR_dB
+SNR_Source_Status
+```
+
+不再包含 `Sensitivity_dBFS`。
+
+### `09_Sensitivity`
+
+```text
+SN
+Test_Time
+Path_Result
+Result
+Sensitivity_dBFS
+Sensitivity_Source_Status
+```
+
+SNR / Sensitivity 都直接使用 Main Station 對應 row 的 B欄 result 與 C欄 value；缺 item 就留白，不自行計算替代值。
+
+## RawData matching
+
+只有在有提供 RawData archive 時才啟動 matcher。
+
+原則：
+
+1. Test Type 一致
+2. SN exact match（normalize 後）
+3. filename PASS/FAIL 可作 internal supporting condition
+4. 以 selected FATP FR filename timestamp 做 proximity matching
+5. 超過 tolerance 不配
+6. 無安全候選 → `UNMATCHED`
+7. 多候選同樣合理 → `AMBIGUOUS`
+
+目前 60 秒 tolerance 仍為 proposed，需要同批 FATP + RawData 驗證。
+
+## Retest
+
+保留所有歷史 run。
+
+`Latest_Run`：
+
+```text
+(Test_Type, Mode, SN)
+```
+
+排序使用 Main Station filename 的 Test_Time，Run_ID text 作 tie-break。
+
+## Limit
+
+Main Station D/E 欄是 Low/High limit，但 V13 暫不處理：
+
+- 不輸出 limit
+- 不用 limit 判 PASS/FAIL
+- 不建立 limit sheet
+
+後續套用專用 Limit Excel template。
+
+## QC
+
+Workbook 不建立 Import Log。
+
+runtime / console QC 應涵蓋：
+
+- unsupported archive
+- missing / duplicate / malformed CSV
+- filename timestamp parse failure
+- production fractional-second time parse failure
+- Test Type / station cross-check mismatch
+- Path_Result vs FR_File_Result mismatch
+- RawData MATCHED / UNMATCHED / AMBIGUOUS
+- missing/invalid THD / Phase / Noise / SNR / Sensitivity flag
+- frequency-axis mismatch
+
+RawData 沒提供不是 QC error。
+
+## 執行與開發
+
+V13.6 code 入口：
+
+```powershell
+python -m src.main
+```
+
+V12 暫時保留：
+
+```powershell
+python src/build_summary.py <raw-data-folder>
+```
+
+## Public repository 注意事項
+
+此 repository 是 public。不要 commit 真實 FATP / RawData archive、CSV、WAV、XLSX、DUT SN、MAC、operator/tester ID 或其他 factory-sensitive data。Regression tests 使用 synthetic / redacted fixtures。
+
