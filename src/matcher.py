@@ -44,6 +44,8 @@ def match_rawdata(runs: list[TestRun], records: list[RawRecord] | None,
         run.rawdata_result = record.result
         run.rawdata_time_delta_s = best[1]
         run.rawdata_pf_mismatch = bool(record.result and run.fr_file_result and record.result != run.fr_file_result)
+        run.rawdata_timestamp = record.timestamp
+        run.rawdata_timestamp_token = record.timestamp_token
         run.raw_fr_original = record.fr_original
         run.raw_fr_1_12 = record.fr_1_12
         if run.rawdata_pf_mismatch:
@@ -58,6 +60,7 @@ def mark_latest_runs(runs: list[TestRun]) -> None:
         valid = [run for run in grouped if run.sn]
         if not valid:
             continue
-        latest = max(valid, key=lambda run: (run.start_time or datetime.min, run.run_id))
+        latest = max(valid, key=lambda run: (run.main_timestamp or datetime.min, run.run_id))
         latest.latest_run = True
+
 

@@ -5,8 +5,8 @@ ARUBA FATP MIC / PREMIC 產測資料整理與 Excel Summary 工具。
 ## 目前狀態
 
 - `v12`：保留於 `src/build_summary.py`，供 regression comparison
-- `v13.5 implementation`：已可執行，但經真實資料測試後發現輸出/時間/壓縮格式需修正
-- `v13.6`：**目前 active specification**，等待 Codex 依 `docs/v13_spec_2026-09-08.md` 更新 implementation
+- `v13.5 implementation`：保留於 Git history，已由 V13.6 supersede
+- `v13.6`：**目前 active implementation**，入口為 `python -m src.main`
 - V13 規格：`docs/v13_spec_2026-09-08.md`
 
 ## V13.6 輸入
@@ -308,13 +308,11 @@ RawData 沒提供不是 QC error。
 
 ## 執行與開發
 
-目前 V13.5 code 入口：
+V13.6 code 入口：
 
 ```powershell
 python -m src.main
 ```
-
-V13.6 code 尚待 Codex 更新後才算完成。
 
 V12 暫時保留：
 
@@ -325,3 +323,4 @@ python src/build_summary.py <raw-data-folder>
 ## Public repository 注意事項
 
 此 repository 是 public。不要 commit 真實 FATP / RawData archive、CSV、WAV、XLSX、DUT SN、MAC、operator/tester ID 或其他 factory-sensitive data。Regression tests 使用 synthetic / redacted fixtures。
+

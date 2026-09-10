@@ -1,4 +1,4 @@
-"""Recursive FATP and RawData ZIP scanners."""
+"""Recursive FATP and RawData archive scanners."""
 
 import logging
 import re
@@ -9,9 +9,9 @@ from pathlib import PurePosixPath
 from .models import RawRecord, TestRun
 from .parsers import (
     normalize, parse_fr, parse_noise, parse_rawdata, parse_station,
-    result_from_filename, timestamp_from_name,
+    result_from_filename, timestamp_from_name, timestamp_info_from_name,
 )
-from .zip_reader import ZipCsvReader
+from .archive_reader import ArchiveCsvReader
 
 
 def _path_context(name: str) -> tuple[str, str, str] | None:
@@ -50,7 +50,7 @@ def _select_latest(names: list[str], kind: str, run_path: str, logger: logging.L
     return ranked[-1]
 
 
-def scan_fatp(reader: ZipCsvReader, test_type: str, logger: logging.Logger) -> list[TestRun]:
+def scan_fatp(reader: ArchiveCsvReader, test_type: str, logger: logging.Logger) -> list[TestRun]:
     groups: dict[str, list[str]] = defaultdict(list)
     contexts = {}
     for name in reader.csv_names:
@@ -74,6 +74,9 @@ def scan_fatp(reader: ZipCsvReader, test_type: str, logger: logging.Logger) -> l
         run = TestRun(test_type, mode, station, path_result, run_dir,
                       main_csv=main_name, fr_csv=fr_name, noise_csv=noise_name)
         if main_name:
+            run.main_timestamp, run.main_timestamp_token = timestamp_info_from_name(main_name)
+            if run.main_timestamp is None:
+                logger.warning("Main Station filename has no parseable timestamp: %s", main_name)
             station_data = parse_station(rows_by_name[main_name], main_name, logger)
             for key, value in station_data.items():
                 setattr(run, key, value)
@@ -87,6 +90,8 @@ def scan_fatp(reader: ZipCsvReader, test_type: str, logger: logging.Logger) -> l
         if fr_name:
             run.fr_file_result = result_from_filename(fr_name)
             run.fr_timestamp = timestamp_from_name(fr_name)
+            if run.fr_timestamp is None:
+                logger.warning("FR filename has no parseable timestamp: %s", fr_name)
             curves = parse_fr(rows_by_name[fr_name])
             run.fr, run.thd, run.phase = curves["fr"], curves["thd"], curves["phase"]
             for label, curve in (("FR", run.fr), ("THD", run.thd), ("Phase", run.phase)):
@@ -96,11 +101,16 @@ def scan_fatp(reader: ZipCsvReader, test_type: str, logger: logging.Logger) -> l
                 logger.warning("Path_Result %s disagrees with FR_File_Result %s in %s",
                                run.path_result, run.fr_file_result, run_dir)
         if noise_name:
+            run.noise_timestamp, _ = timestamp_info_from_name(noise_name)
+            if run.noise_timestamp is None:
+                logger.warning("Noise filename has no parseable timestamp: %s", noise_name)
             run.noise = parse_noise(rows_by_name[noise_name])
             if not run.noise.values:
                 logger.warning("Missing or malformed detailed Noise section in %s", noise_name)
         if run.start_time is None and main_name:
             logger.warning("Unparseable or missing test_start_time in %s", main_name)
+        if run.end_time is None and main_name:
+            logger.warning("Unparseable or missing test_end_time in %s", main_name)
         runs.append(run)
     return runs
 
@@ -120,7 +130,7 @@ def _sn_from_name(name: str) -> str:
     return (match.group(1) if match else stem.split("_", 1)[0]).strip().upper()
 
 
-def scan_rawdata(reader: ZipCsvReader, logger: logging.Logger) -> list[RawRecord]:
+def scan_rawdata(reader: ArchiveCsvReader, logger: logging.Logger) -> list[RawRecord]:
     records = []
     for name in sorted(reader.csv_names):
         test_type = _raw_test_type(name)
@@ -129,10 +139,15 @@ def scan_rawdata(reader: ZipCsvReader, logger: logging.Logger) -> list[RawRecord
         curves = parse_rawdata(reader.read_rows(name))
         if not curves["fr_original"].values and not curves["fr_1_12"].values:
             logger.warning("Empty or malformed RawData sections in %s", name)
+        timestamp, token = timestamp_info_from_name(name)
+        if timestamp is None:
+            logger.warning("RawData filename has no parseable timestamp: %s", name)
         records.append(RawRecord(
-            test_type=test_type, sn=_sn_from_name(name), timestamp=timestamp_from_name(name),
+            test_type=test_type, sn=_sn_from_name(name), timestamp=timestamp,
             result=result_from_filename(name), source=name,
+            timestamp_token=token,
             fr_original=curves["fr_original"], fr_1_12=curves["fr_1_12"],
         ))
     return records
+
 

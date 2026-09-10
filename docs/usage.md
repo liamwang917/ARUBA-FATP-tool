@@ -48,7 +48,7 @@ If RawData is not supplied, processing continues normally and RawData-derived sh
 
 `tools\run_build_summary.bat` is the user-facing launcher.
 
-V13.6 implementation must update the file-selection dialog so it is not limited to ZIP and allows the supported archive extensions above.
+The file-selection dialog accepts every supported archive extension listed above.
 
 ## Output workbooks
 
@@ -113,3 +113,4 @@ python src/build_summary.py <raw-data-folder>
 ```
 
 for regression comparison until V13.6 real-data validation is complete.
+

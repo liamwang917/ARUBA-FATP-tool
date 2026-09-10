@@ -12,20 +12,22 @@ SHEET_NAMES = (
     "06_Phase",
     "07_Noise",
     "08_SNR",
+    "09_Sensitivity",
 )
 
-METADATA_COLUMNS = (
+METADATA_CONTEXT_COLUMNS = (
     "Test_Type", "Mode", "SN", "Run_ID", "Test_Time", "Station",
-    "Operator", "Tester", "SW_Version", "Start_Time", "End_Time",
-    "Total_Test_Time_s", "Sensitivity_dBFS", "SNR_dB", "Path_Result",
-    "FR_File_Result", "Latest_Run", "RawData_Result",
+    "Path_Result", "FR_File_Result", "Latest_Run", "RawData_Result",
     "RawData_Match_Status", "RawData_Time_Delta_s",
     "RawData_PF_Mismatch", "Main_CSV", "FR_CSV", "Noise_CSV",
 )
+
+SUPPORTED_ARCHIVE_SUFFIXES = (".zip", ".7z", ".tar", ".tar.gz", ".tgz")
 
 
 @dataclass(frozen=True)
 class MatchConfig:
     rawdata_max_time_delta_sec: int = 60
     rawdata_ambiguous_margin_sec: int = 5
+
 

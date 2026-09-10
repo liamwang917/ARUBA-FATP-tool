@@ -18,7 +18,12 @@ def normalize(value: object) -> str:
 
 def parse_datetime(value: object) -> datetime | None:
     text = str(value or "").strip()
-    for fmt in ("%Y%m%d%H%M%S", "%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S"):
+    for fmt in (
+        "%Y%m%d%H%M%S", "%Y%m%d%H%M%S.%f",
+        "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f",
+        "%Y/%m/%d %H:%M:%S", "%Y/%m/%d %H:%M:%S.%f",
+        "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%S.%f",
+    ):
         try:
             return datetime.strptime(text, fmt)
         except ValueError:
@@ -26,9 +31,14 @@ def parse_datetime(value: object) -> datetime | None:
     return None
 
 
+def timestamp_info_from_name(name: str) -> tuple[datetime | None, str]:
+    matches = re.findall(r"(?<!\d)(\d{14,15})(?!\d)", PurePosixPath(name).stem)
+    token = matches[-1] if matches else ""
+    return (parse_datetime(token[:14]), token) if token else (None, "")
+
+
 def timestamp_from_name(name: str) -> datetime | None:
-    matches = re.findall(r"(?<!\d)(\d{14})(?!\d)", PurePosixPath(name).stem)
-    return parse_datetime(matches[-1]) if matches else None
+    return timestamp_info_from_name(name)[0]
 
 
 def result_from_filename(name: str) -> str:
@@ -56,8 +66,23 @@ def flag_result(value: object) -> str:
     return "PASS" if text == "1" else "FAIL" if text == "0" else ""
 
 
+def station_value(item_key: str, value: object) -> object:
+    text = str(value or "").strip()
+    key = normalize(item_key)
+    if not text:
+        return ""
+    if key in {"test_start_time", "test_end_time"}:
+        return parse_datetime(text) or text
+    numeric_measurement = (
+        bool(re.fullmatch(r"fr\d+", key))
+        or key in {"sensitivity", "thd", "phase", "noise", "snr", "total_test_time"}
+    )
+    return coerce_number(text) if numeric_measurement else text
+
+
 def parse_station(rows: list[list[str]], source: str, logger: logging.Logger) -> dict:
     items: dict[str, list[str]] = {}
+    display_names: dict[str, str] = {}
     for index, row in enumerate(rows, 1):
         if not row or not str(row[0]).strip():
             continue
@@ -66,7 +91,9 @@ def parse_station(rows: list[list[str]], source: str, logger: logging.Logger) ->
             continue
         if len(row) != 6:
             logger.warning("Main Station row does not have six columns %s:%d", source, index)
-        items[normalize(row[0])] = row
+        normalized_key = normalize(row[0])
+        display_names.setdefault(normalized_key, str(row[0]).strip())
+        items[normalized_key] = row
     metadata_keys = {
         "sn": "uut_sn", "run_id": "tsr_id", "operator": "op_id",
         "station_id": "station_id", "tester": "tester_id",
@@ -80,7 +107,7 @@ def parse_station(rows: list[list[str]], source: str, logger: logging.Logger) ->
     result["end_time"] = parse_datetime(result["end_time"])
     result["total_test_time_s"] = coerce_number(result["total_test_time_s"])
     result["item_results"] = {}
-    for key in ("thd", "phase", "noise", "snr"):
+    for key in ("thd", "phase", "noise", "snr", "sensitivity"):
         row = items.get(key)
         result["item_results"][key.upper()] = flag_result(row[1]) if row and len(row) > 1 else ""
         if row is None:
@@ -91,6 +118,11 @@ def parse_station(rows: list[list[str]], source: str, logger: logging.Logger) ->
         row = items.get(key)
         result[key] = coerce_number(row[2]) if row and len(row) > 2 else ""
     result["snr_present"] = "snr" in items
+    result["sensitivity_present"] = "sensitivity" in items
+    result["station_items"] = [
+        (display_names[key], station_value(display_names[key], row[2]))
+        for key, row in items.items()
+    ]
     return result
 
 
@@ -141,4 +173,5 @@ def parse_rawdata(rows: list[list[str]]) -> dict[str, Curve]:
         "fr_original": parse_curve(rows, "FR_Original", ("Data (dBFS):",)),
         "fr_1_12": parse_curve(rows, "FR_1/12smooth", ("Data (dBFS):",)),
     }
+
 

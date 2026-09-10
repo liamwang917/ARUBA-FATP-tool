@@ -18,6 +18,7 @@ class RawRecord:
     timestamp: Optional[datetime]
     result: str
     source: str
+    timestamp_token: str = ""
     fr_original: Curve = field(default_factory=Curve)
     fr_1_12: Curve = field(default_factory=Curve)
     consumed: bool = False
@@ -33,8 +34,11 @@ class TestRun:
     main_csv: str = ""
     fr_csv: str = ""
     noise_csv: str = ""
+    main_timestamp: Optional[datetime] = None
+    main_timestamp_token: str = ""
     sn: str = ""
     run_id: str = ""
+    station_id: str = ""
     operator: str = ""
     tester: str = ""
     sw_version: str = ""
@@ -42,11 +46,14 @@ class TestRun:
     end_time: Optional[datetime] = None
     total_test_time_s: object = ""
     sensitivity: object = ""
+    sensitivity_present: bool = False
     snr: object = ""
     snr_present: bool = False
     item_results: dict[str, str] = field(default_factory=dict)
+    station_items: list[tuple[str, object]] = field(default_factory=list)
     fr_file_result: str = ""
     fr_timestamp: Optional[datetime] = None
+    noise_timestamp: Optional[datetime] = None
     fr: Curve = field(default_factory=Curve)
     thd: Curve = field(default_factory=Curve)
     phase: Curve = field(default_factory=Curve)
@@ -56,7 +63,10 @@ class TestRun:
     rawdata_match_status: str = "NOT_PROVIDED"
     rawdata_time_delta_s: object = ""
     rawdata_pf_mismatch: object = ""
+    rawdata_timestamp: Optional[datetime] = None
+    rawdata_timestamp_token: str = ""
     raw_fr_original: Curve = field(default_factory=Curve)
     raw_fr_1_12: Curve = field(default_factory=Curve)
     mac: str = ""
+
 

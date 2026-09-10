@@ -1,15 +1,15 @@
-"""Command-line entry point for the V13 ZIP-to-workbook pipeline."""
+"""Command-line entry point for the V13.6 archive-to-workbook pipeline."""
 
 import argparse
 import logging
 import sys
 from pathlib import Path
 
+from .archive_reader import ArchiveCsvReader, archive_stem, archive_suffix
 from .config import MatchConfig
 from .matcher import mark_latest_runs, match_rawdata
 from .report import build_workbook
 from .scanners import scan_fatp, scan_rawdata
-from .zip_reader import ZipCsvReader
 
 
 def _logger(verbose: bool = False) -> logging.Logger:
@@ -21,12 +21,12 @@ def _logger(verbose: bool = False) -> logging.Logger:
 def classify_inputs(paths: list[Path]) -> tuple[Path | None, Path | None, Path | None]:
     mic = premic = rawdata = None
     for path in paths:
-        name = path.name.upper()
-        if name == "ARUBA_MIC.ZIP":
+        name = archive_stem(path).upper()
+        if name == "ARUBA_MIC":
             mic = path
-        elif name == "ARUBA_PREMIC.ZIP":
+        elif name == "ARUBA_PREMIC":
             premic = path
-        elif name == "RAWDATA_RD.ZIP":
+        elif name == "RAWDATA_RD":
             rawdata = path
         else:
             raise ValueError(f"Unrecognized input package name: {path.name}")
@@ -39,27 +39,27 @@ def run_pipeline(mic: Path | None, premic: Path | None, rawdata: Path | None,
     logger = logger or _logger()
     config = config or MatchConfig()
     if not mic and not premic:
-        raise ValueError("At least one FATP input is required: ARUBA_MIC.zip or ARUBA_PREMIC.zip")
+        raise ValueError("At least one FATP archive is required: ARUBA_MIC or ARUBA_PREMIC")
     packages = [("MIC", mic), ("PREMIC", premic)]
     for _, package in packages:
-        if package and (not package.is_file() or package.suffix.lower() != ".zip"):
-            raise ValueError(f"FATP ZIP not found: {package}")
-    if rawdata and (not rawdata.is_file() or rawdata.suffix.lower() != ".zip"):
-        raise ValueError(f"RawData ZIP not found: {rawdata}")
+        if package and (not package.is_file() or not archive_suffix(package)):
+            raise ValueError(f"FATP archive missing or unsupported: {package}")
+    if rawdata and (not rawdata.is_file() or not archive_suffix(rawdata)):
+        raise ValueError(f"RawData archive missing or unsupported: {rawdata}")
 
     runs = []
     for test_type, package in packages:
         if package:
             logger.info("Scanning %s", package)
-            with ZipCsvReader(package, logger) as reader:
+            with ArchiveCsvReader(package, logger) as reader:
                 runs.extend(scan_fatp(reader, test_type, logger))
     raw_records = None
     if rawdata:
         logger.info("Scanning optional RawData %s", rawdata)
-        with ZipCsvReader(rawdata, logger) as reader:
+        with ArchiveCsvReader(rawdata, logger) as reader:
             raw_records = scan_rawdata(reader, logger)
     else:
-        logger.info("RawData_RD.zip not provided; RawData status will be NOT_PROVIDED")
+        logger.info("RawData archive not provided; RawData status will be NOT_PROVIDED")
     match_rawdata(runs, raw_records, config, logger)
     mark_latest_runs(runs)
 
@@ -76,7 +76,7 @@ def run_pipeline(mic: Path | None, premic: Path | None, rawdata: Path | None,
             outputs.append(output)
             logger.info("Created %s", output)
     if not outputs:
-        raise ValueError("No Online or Offline FATP runs were discovered in the supplied ZIP package(s)")
+        raise ValueError("No Online or Offline FATP runs were discovered in the supplied archive(s)")
     return outputs
 
 
@@ -88,8 +88,13 @@ def choose_packages_gui() -> list[Path]:
         root.withdraw()
         root.attributes("-topmost", True)
         selected = filedialog.askopenfilenames(
-            title="Select ARUBA_MIC.zip and/or ARUBA_PREMIC.zip; RawData_RD.zip is optional",
-            filetypes=(("ZIP packages", "*.zip"),),
+            title="Select MIC/PREMIC archives; RawData is optional",
+            filetypes=(
+                ("Supported archives", "*.zip *.7z *.tar *.tar.gz *.tgz"),
+                ("ZIP archives", "*.zip"),
+                ("7Z archives", "*.7z"),
+                ("TAR archives", "*.tar *.tar.gz *.tgz"),
+            ),
         )
         root.destroy()
         return [Path(path) for path in selected]
@@ -98,12 +103,12 @@ def choose_packages_gui() -> list[Path]:
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Build V13 ARUBA FATP Excel summaries directly from ZIP packages.")
+    parser = argparse.ArgumentParser(description="Build V13.6 ARUBA FATP Excel summaries directly from archives.")
     parser.add_argument("packages", nargs="*", type=Path,
-                        help="ARUBA_MIC.zip, ARUBA_PREMIC.zip, and optional RawData_RD.zip")
-    parser.add_argument("--mic", type=Path, help="Path to ARUBA_MIC.zip")
-    parser.add_argument("--premic", type=Path, help="Path to ARUBA_PREMIC.zip")
-    parser.add_argument("--rawdata", type=Path, help="Optional path to RawData_RD.zip")
+                        help="MIC/PREMIC archives and optional RawData archive")
+    parser.add_argument("--mic", type=Path, help="Path to ARUBA_MIC archive")
+    parser.add_argument("--premic", type=Path, help="Path to ARUBA_PREMIC archive")
+    parser.add_argument("--rawdata", type=Path, help="Optional path to RawData_RD archive")
     parser.add_argument("--output-dir", type=Path, default=Path.cwd(), help="Workbook output directory")
     parser.add_argument("--rawdata-max-time-delta-sec", type=int, default=60)
     parser.add_argument("--rawdata-ambiguous-margin-sec", type=int, default=5)
@@ -128,4 +133,5 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
 

@@ -4,7 +4,7 @@ This file tracks the ARUBA FATP tool's version history. Filenames no longer embe
 
 ## v13.6 — real-data feedback revision (2026-09-10)
 
-Specification/documentation revision based on the first real-data execution of the V13.5 implementation. Existing V13.5 code must be updated before it is considered V13.6-complete.
+Implemented after the first real-data execution of the V13.5 baseline. V13.6 now provides the generic archive reader, source-specific timestamps, complete Main Station Metadata capture, simplified RawData sheets, and independent Sensitivity output described below.
 
 Confirmed decisions:
 
@@ -117,3 +117,4 @@ Legacy folder-based calculation-friendly version retained for comparison until V
 ## v9 and earlier
 
 Earlier internal iterations preceding the snapshot first tracked in this repository (2026-09-07). Not individually preserved here.
+
