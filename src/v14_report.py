@@ -200,17 +200,33 @@ def _clear_existing(root: ET.Element, first_column: int, last_column: int, end_r
                 cell.attrib.pop("t", None)
 
 
-def _set_dimension(root: ET.Element, required_last_column: int, required_last_row: int) -> None:
+def _set_dimension(
+    root: ET.Element,
+    required_last_column: int,
+    required_last_row: int,
+    *,
+    required_first_column: int | None = None,
+    required_first_row: int | None = None,
+) -> None:
     dimension = root.find(f"{{{NS}}}dimension")
     ref = dimension.attrib.get("ref", "A1")
     match = re.fullmatch(r"([A-Z]+)(\d+)(?::([A-Z]+)(\d+))?", ref)
     if not match:
         return
     start_column, start_row, end_column, end_row = match.groups()
+    start_index = _xml_column(start_column + "1")
+    start_row_index = int(start_row)
     end_column = end_column or start_column
-    end_row = int(end_row or start_row)
+    end_row_index = int(end_row or start_row)
+    if required_first_column is not None:
+        start_index = min(start_index, required_first_column)
+    if required_first_row is not None:
+        start_row_index = min(start_row_index, required_first_row)
     end_index = max(_xml_column(end_column + "1"), required_last_column)
-    dimension.attrib["ref"] = f"{start_column}{start_row}:{_column(end_index)}{max(end_row, required_last_row)}"
+    dimension.attrib["ref"] = (
+        f"{_column(start_index)}{start_row_index}:"
+        f"{_column(end_index)}{max(end_row_index, required_last_row)}"
+    )
 
 
 def _clear_and_write_curve(xml: bytes, header: list[object], rows: list[dict[str, object]], context: str, end_row: int) -> bytes:
@@ -233,7 +249,13 @@ def _clear_and_write_curve(xml: bytes, header: list[object], rows: list[dict[str
         _cell(row, 3, source.get(context))
         for index, frequency in enumerate(source_axis, 4):
             _cell(row, index, source.get(frequency))
-    _set_dimension(root, len(destination_axis) + 3, 39 + len(rows))
+    _set_dimension(
+        root,
+        len(destination_axis) + 3,
+        39 + len(rows),
+        required_first_column=1 if rows else None,
+        required_first_row=40 if rows else None,
+    )
     return _serialize(root, xml)
 
 
@@ -243,7 +265,13 @@ def _clear_and_write_scalar(xml: bytes, rows: list[dict[str, object]], value_key
     for offset, source in enumerate(rows):
         row = _ensure_row(root, 40 + offset)
         _cell(row, 1, source.get("SN")); _cell(row, 2, source.get(value_key))
-    _set_dimension(root, 2, 39 + len(rows))
+    _set_dimension(
+        root,
+        2,
+        39 + len(rows),
+        required_first_column=1 if rows else None,
+        required_first_row=40 if rows else None,
+    )
     return _serialize(root, xml)
 
 
