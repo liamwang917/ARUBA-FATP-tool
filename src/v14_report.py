@@ -138,9 +138,16 @@ def _display(value: object) -> object:
 
 def _cell(row: ET.Element, column: int, value: object, *, compact_datetime: bool = True) -> None:
     reference = f"{_column(column)}{row.attrib['r']}"
-    cell = next((item for item in row.findall(f"{{{NS}}}c") if item.attrib.get("r") == reference), None)
+    cells = row.findall(f"{{{NS}}}c")
+    cell = next((item for item in cells if item.attrib.get("r") == reference), None)
     if cell is None:
-        cell = ET.SubElement(row, f"{{{NS}}}c", {"r": reference})
+        cell = ET.Element(f"{{{NS}}}c", {"r": reference})
+        insert_at = len(cells)
+        for index, existing in enumerate(cells):
+            if _xml_column(existing.attrib["r"]) > column:
+                insert_at = index
+                break
+        row.insert(insert_at, cell)
     for child in list(cell):
         cell.remove(child)
     if value is None or value == "":
