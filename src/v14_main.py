@@ -6,7 +6,7 @@ from .main import choose_packages_gui, classify_inputs, run_pipeline
 from .v14_report import build_v14_report, verify_template
 
 
-DEFAULT_TEMPLATE = Path(__file__).resolve().parents[1] / "templates" / "Post-MIC limit_EV3_20260911.xlsx"
+DEFAULT_TEMPLATE = Path(__file__).resolve().parents[1] / "templates" / "Post-MIC limit_20260911.xlsx"
 RC_NAME = "ARUBA FATP V14.5 RC"
 
 def main(argv=None):
