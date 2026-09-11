@@ -1,5 +1,18 @@
 # Changelog
 
+## v14.5 — clean packaged master / operational UAT (2026-09-11)
+
+- approved clean release template: `Post-MIC limit_20260911.xlsx`;
+- template size: 859,035 bytes;
+- template SHA-256: `a556aa066b9412fb17512bb4f992d26909676c5bc53a138616e2cebef2925724`;
+- removed legacy DUT / RawData production values from the release master;
+- `Frequency Response_1_12` and `Frequency Response_orignal` are visible in the master;
+- retain runtime safeguards for FR_1_3 10-sigma limits, SN-only curve legends,
+  Noise Floor >=100 Hz plotting, Metadata millisecond precision, and Excel recalculation;
+- package the approved template with the tool; normal users do not browse for it;
+- PR #4 remains Draft until real Windows operational UAT passes.
+
+
 ## v14.4 — workbook-integrity implementation lock (2026-09-11)
 
 Locked the implementation rules required after independent OOXML review:
