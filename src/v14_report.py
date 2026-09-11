@@ -1,4 +1,4 @@
-"""Surgical V14.4 report-template population; never round-trips the master."""
+"""Surgical V14.5 report-template population; never round-trips the master."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from xml.etree import ElementTree as ET
 from openpyxl import load_workbook
 
 
-TEMPLATE_SHA256 = "93af9584fa442b70c8d056921d33135db82656e772f9c84019adc46010c4eb7e"
+TEMPLATE_SHA256 = "a556aa066b9412fb17512bb4f992d26909676c5bc53a138616e2cebef2925724"
 MAX_DUTS = 947
 NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
 REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
@@ -75,13 +75,13 @@ def verify_template(template: Path, expected_sha256: str = TEMPLATE_SHA256) -> N
     if not template.is_file():
         raise V14ReportError(
             "Approved V14.5 template is missing. Place "
-            "Post-MIC limit_EV3_20260911.xlsx at templates/"
+            "Post-MIC limit_20260911.xlsx at templates/"
         )
     digest = hashlib.sha256(template.read_bytes()).hexdigest()
     if digest != expected_sha256:
         raise V14ReportError(
             "Approved V14.5 template hash is incorrect. Replace templates/"
-            "Post-MIC limit_EV3_20260911.xlsx with the approved master"
+            "Post-MIC limit_20260911.xlsx with the approved master"
         )
 
 
