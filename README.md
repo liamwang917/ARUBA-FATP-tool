@@ -6,8 +6,10 @@ ARUBA FATP MIC / PREMIC 產測資料整理與 Excel Summary 工具。
 
 - `v12`：保留於 `src/build_summary.py`，供 regression comparison
 - `v13.5 implementation`：保留於 Git history，已由 V13.6 supersede
-- `v13.6`：**目前 active implementation**，入口為 `python -m src.main`
+- `v13.6`：**目前 main / production data-normalization baseline**，入口為 `python -m src.main`
+- `v14`：**Report Template integration 設計中**，開發 branch `work/v14-report-template-20260911`；目前只鎖模板保護與資料 mapping，尚未取代 V13.6
 - V13 規格：`docs/v13_spec_2026-09-08.md`
+- V14 模板規格：`docs/v14_report_template_spec_2026-09-11.md`
 
 ## V13.6 輸入
 
@@ -324,3 +326,41 @@ python src/build_summary.py <raw-data-folder>
 
 此 repository 是 public。不要 commit 真實 FATP / RawData archive、CSV、WAV、XLSX、DUT SN、MAC、operator/tester ID 或其他 factory-sensitive data。Regression tests 使用 synthetic / redacted fixtures。
 
+
+## V14 Report Template integration — draft
+
+V14 以使用者提供的 Excel report template 為 master，原則是 **不重建、不重排、不重新格式化**。
+
+目前 V14 PR 只記錄模板結構、保護規則與 V13.6 → report sheet mapping；尚未修改 V13.6 parser，也尚未批准修改 template formulas/charts/layout。
+
+V14.5 clean template 由使用者確認可公開，版本化於 `templates/`，並以 SHA-256 / sheet manifest 固定版本。詳見：
+
+- `docs/v14_report_template_spec_2026-09-11.md`
+- `data/templates/v14_template_manifest_2026-09-11.md`
+
+
+## V14.5 template packaging
+
+The approved clean V14.5 template is versioned with the tool at:
+
+`templates/Post-MIC limit_20260911.xlsx`
+
+SHA-256:
+
+`a556aa066b9412fb17512bb4f992d26909676c5bc53a138616e2cebef2925724`
+
+Normal users do not select or install the template manually. The tool validates the
+packaged template identity automatically.
+
+The template contains no legacy DUT / RawData production values. Real FATP archives,
+RawData archives, CSV/WAV files, generated summaries, generated reports, DUT SN/MAC,
+operator/tester IDs, and other factory-sensitive data must still never be committed.
+
+
+## V14.5 output folder
+
+Normal V14.5 BAT/GUI operation writes all generated Excel workbooks under:
+
+`report/`
+
+This includes both `summary_*.xlsx` and `report_*.xlsx`. The folder is created automatically when the tool runs.

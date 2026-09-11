@@ -1,5 +1,64 @@
 # Changelog
 
+## v14.5 — clean packaged master / operational UAT (2026-09-11)
+
+- approved clean release template: `Post-MIC limit_20260911.xlsx`;
+- template size: 859,035 bytes;
+- template SHA-256: `a556aa066b9412fb17512bb4f992d26909676c5bc53a138616e2cebef2925724`;
+- removed legacy DUT / RawData production values from the release master;
+- `Frequency Response_1_12` and `Frequency Response_orignal` are visible in the master;
+- retain runtime safeguards for FR_1_3 10-sigma limits, SN-only curve legends,
+  Noise Floor >=100 Hz plotting, Metadata millisecond precision, and Excel recalculation;
+- package the approved template with the tool; normal users do not browse for it;
+- PR #4 remains Draft until real Windows operational UAT passes.
+
+
+## v14.4 — workbook-integrity implementation lock (2026-09-11)
+
+Locked the implementation rules required after independent OOXML review:
+
+- clear legacy DUT rows before population;
+- exact column-C semantics by destination sheet;
+- frequency-axis mismatch is fatal;
+- 947-DUT statistical capacity remains independent of smaller chart coverage;
+- remove stale calcChain and force recalculation on Excel open;
+- prohibit openpyxl/LibreOffice round-trip for the approved master template;
+- require protected OOXML parts to remain byte-identical;
+- preserve known pre-existing template defects without silently repairing them;
+- Microsoft Excel repair/recovery/corruption warning = output failure.
+
+## v14.2 — replacement EV3 master and locked template rules (2026-09-11)
+
+Replaced the V14 design reference with `Post-MIC limit_EV3_20260911.xlsx` and confirmed the legacy external workbook link is removed.
+
+Locked V14.2 decisions:
+
+- SNR and Sensitivity use V13.6 Main Station values directly;
+- `Frequency Response_1_12` and `Frequency Response_orignal` are visible in generated reports;
+- RawData sheet column C = `RawData_Match_Status`;
+- append a new `Metadata` sheet after `Sensitivity`, following V13.6 `01_Metadata`;
+- fixed-capacity policy: stop/warn on overflow, never silently truncate, and do not auto-extend formulas/charts;
+- generated reports must contain no external workbook links;
+- generated XLSX must open in Microsoft Excel without repair/recovery/corruption warning.
+
+Template identity: SHA-256 `93af9584fa442b70c8d056921d33135db82656e772f9c84019adc46010c4eb7e`.
+
+## v14.0 — report-template analysis / preservation contract (2026-09-11)
+
+Started a new V14 draft line from the validated V13.6 `main` baseline.
+
+This revision is documentation/design only. No V13.6 parser behavior and no user Excel template formatting/formulas/charts are changed.
+
+Locked initial V14 decisions:
+
+- treat the supplied workbook as an immutable report master and populate a copy later;
+- preserve all worksheet names/order/visibility, formatting, merges, charts, conditional formatting, print settings, formulas and external-link relationships until explicitly approved otherwise;
+- record the exact 11-sheet / 8-chart template structure and SHA-256 manifest without committing the binary workbook to the public repository;
+- map V13.6 normalized FR/RawData/THD/Phase/Noise/SNR/Sensitivity outputs to the existing report sheets;
+- leave SNR/Sensitivity formula-vs-Main-Station semantics, hidden RawData column-C behavior, Metadata placement, row-capacity behavior, and legacy external-link treatment as explicit open items before implementation.
+
+See `docs/v14_report_template_spec_2026-09-11.md`.
+
 This file tracks the ARUBA FATP tool's version history. Filenames no longer embed version numbers; use this file plus git/PR history for version context.
 
 ## v13.6 — real-data feedback revision (2026-09-10)

@@ -8,3 +8,5 @@ Thumbs.db
 ~$*.xlsx
 ~$*.xls
 *.tmp
+summary_*.xlsx
+report_*.xlsx
