@@ -6,6 +6,7 @@ echo.
 echo ARUBA FATP V14.5 RC - Operational UAT
 echo Select ARUBA_MIC and/or ARUBA_PREMIC archives. RawData_RD is optional.
 echo The bundled clean template is used automatically.
+echo Generated Excel files are written to the report folder.
 echo.
 
 if not "%~1"=="" (
@@ -22,6 +23,7 @@ set "EXIT_CODE=2"
 goto :finish
 
 :run
+if not exist "report" mkdir "report"
 where py >nul 2>nul
 if not errorlevel 1 (
     py -3 -m src.v14_main
@@ -42,7 +44,7 @@ if not "%EXIT_CODE%"=="0" (
     goto :finish
 )
 echo.
-echo V14.5 RC completed. Summary and report workbooks are in the output directory shown above.
+echo V14.5 RC completed. Summary and report workbooks are in the report folder.
 
 :finish
 popd
