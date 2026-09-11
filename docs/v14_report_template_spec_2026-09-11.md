@@ -1,4 +1,4 @@
-# V14 Report Template Integration Specification — draft v14.2
+# V14 Report Template Integration Specification — draft v14.3
 
 Date: 2026-09-11
 
@@ -218,21 +218,44 @@ Locked implementation: append one new `Metadata` sheet after `Sensitivity`, usin
 7. Missing source values remain blank rather than being synthesized.
 8. Existing V13.6 summary output remains available as a regression/debug artifact until V14 is validated.
 
-## 10. Capacity / fixed-range finding
+## 10. Data capacity vs chart display capacity
 
-The template uses fixed statistics ranges:
+The template's statistical formulas and charts have different capacities and must be treated separately.
 
-- Frequency Response / FR 1/12 / Original / THD / Phase: generally row 40 through row 986 → 947 DUT rows.
+### 10.1 Statistical/data capacity
+
+The fixed statistics ranges are:
+
+- Frequency Response / FR 1/12 / Original / THD / Phase: row 40 through row 986 → **947 DUT rows**.
 - Noise Floor: row 40 through row 987 → 948 DUT rows.
 - SNR / Sensitivity: row 40 through row 989 → 950 DUT rows.
 
-V14 must not silently truncate data.
+Because one report uses the same DUT population across sheets, V14 uses **947 DUTs as the global data/statistics capacity**.
 
-V14 now uses the **fixed-capacity policy**:
+All imported DUT rows up to 947 must participate in the existing Mean / MAX / MIN / STDEV.P / sigma / limit formulas.
 
-- if any output exceeds the template's supported row count, stop that report with a clear error/warning;
-- do not silently truncate rows;
-- do not dynamically extend formulas/chart ranges/styles in V14.2.
+V14 must never truncate data simply because a chart visualizes fewer DUTs.
+
+If DUT count exceeds 947:
+
+- stop that report with a clear error/warning;
+- do not silently omit rows;
+- do not dynamically extend statistical formula ranges in V14.3.
+
+### 10.2 Chart display capacity
+
+The existing charts have smaller, fixed source ranges / enumerated series. They are a visualization layer only and do **not** define the statistical data capacity.
+
+V14.3 policy:
+
+- preserve all existing chart XML/ranges/series exactly;
+- do not expand or rebuild charts;
+- when DUT count is greater than the chart's existing display coverage but less than or equal to 947, the report remains valid;
+- all DUT rows are still written and included in statistics;
+- the chart shows only the subset supported by the existing template;
+- surface a runtime/console warning that chart display coverage is smaller than the imported DUT count.
+
+Do not use the raw chart `<c:ser>` count as a DUT-capacity number because charts may also contain non-DUT series such as limits/reference/statistical series.
 
 ## 11. External-link status
 
@@ -265,10 +288,22 @@ Before any V14 report generator is considered ready:
 
 1. RawData sheets column C = `RawData_Match_Status`.
 2. Metadata sheet name = `Metadata`; append it after `Sensitivity`; data structure follows V13.6 `01_Metadata`.
-3. Capacity policy = fixed-capacity stop/warn; never silently truncate; do not auto-extend template formulas/charts.
+3. Data/statistics capacity = **947 DUTs globally**. Chart display capacity is separate and may be smaller; charts remain unchanged and may visualize only their existing subset. Never truncate statistical data to chart coverage.
 4. External workbook links = none; do not recreate them.
 5. SNR = V13.6 Main Station SNR value.
 6. Sensitivity = V13.6 Main Station Sensitivity value.
 7. `Frequency Response_1_12` and `Frequency Response_orignal` = visible in generated V14 reports.
 
 There are no remaining product-level semantic decisions blocking implementation. The next step is implementation/review focused on workbook integrity and preservation.
+
+
+## 14. V14.3 clarification — statistics must use the full DUT population
+
+The user explicitly confirmed that chart display coverage must not reduce the data population used for statistics.
+
+Therefore:
+
+- 947 DUTs remains the approved global data/statistics capacity;
+- STDEV.P and all other existing statistical calculations use every populated DUT row within the fixed statistical range;
+- chart coverage is intentionally allowed to be smaller than the data/statistics population;
+- no data row is dropped merely to make chart and statistics row counts equal.
