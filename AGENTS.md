@@ -113,7 +113,7 @@ Do not alter worksheet names/order/visibility, formatting, row heights, column w
 
 V14 implementation must eventually populate a copy of the approved template and write only to approved data regions. Do not regenerate the workbook from scratch.
 
-The binary template is not committed to this public repository at this stage. Use the manifest/hash in `data/templates/v14_template_manifest_2026-09-11.md` to identify the analyzed workbook.
+The V14 template may now be committed under `templates/` because the user approved repository packaging. Prefer a sanitized master with legacy DUT production values removed. The committed template and SHA-256 become the release identity.
 
 
 ## V14.4 Workbook Integrity Rules
@@ -166,6 +166,6 @@ Before V14 can merge to main, deliver the actual Windows end-to-end tool for use
 
 Do not require normal users to select intermediate V13.6 summaries or browse for the template each run.
 
-The local real template stays outside the public repository at `templates/Post-MIC limit_EV3_20260911.xlsx`. Missing/wrong template must fail clearly.
+The approved template is expected to be versioned at `templates/Post-MIC limit_EV3_20260911.xlsx` and bundled with the release/EXE. Missing/wrong template must fail clearly; normal users should never browse for it.
 
 Keep PR #4 Draft until the user explicitly confirms real operational UAT.
