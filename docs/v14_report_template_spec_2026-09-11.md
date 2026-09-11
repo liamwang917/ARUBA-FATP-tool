@@ -58,7 +58,7 @@ No other layout/style/formula/chart changes are approved.
 - Original hidden worksheets: 2
 - External workbook links: **0 (confirmed removed in the new master template)**
 
-The binary workbook is not committed to this public repository at this stage. The manifest records its structure and hash only.
+The approved V14 template binary may be committed to this repository because the user has confirmed the template itself is not confidential. For release packaging, prefer a sanitized template copy with all legacy DUT production rows removed while preserving formulas, charts, styles, and layout. The committed template becomes the packaged production master and its SHA-256 becomes the release template identity.
 
 ## 3. Worksheet contract
 
@@ -430,13 +430,11 @@ V13.6 summary workbooks may still be generated/retained as debug or regression a
 
 ### Template handling
 
-The real master workbook is not committed to the public repository because the supplied file contains production DUT data.
-
-For the final Windows delivery package, the approved/sanitized master template must be placed in a fixed local template location bundled with the tool, for example:
+The approved V14 template should be committed in the repository under a fixed path and bundled with the release, for example:
 
 `templates/Post-MIC limit_EV3_20260911.xlsx`
 
-Normal users do not browse for this file on each run.
+Prefer committing a sanitized master with legacy DUT rows removed. Normal users do not browse for this file on each run, and a packaged EXE must embed or install this template automatically.
 
 At runtime the tool must:
 
@@ -580,3 +578,20 @@ User UAT must cover at least:
 - Noise Floor chart has no logarithmic-axis popup.
 
 PR #4 must remain Draft and unmerged until the user explicitly confirms this operational UAT.
+
+
+## 20. Repository-packaged template
+
+The user has approved storing the V14 template in GitHub so the production tool/EXE can ship with it automatically.
+
+Release policy:
+
+- commit one approved template binary at `templates/Post-MIC limit_EV3_20260911.xlsx`;
+- preferably sanitize legacy DUT production values before commit while preserving the exact report structure, formulas, chart objects, styles, print settings, and approved V14.5 corrections;
+- update `TEMPLATE_SHA256` and the manifest to the committed release-template SHA-256;
+- the normal tool uses this repository-packaged template automatically;
+- no template file picker in normal operation;
+- a future EXE/package embeds or installs this template with the application;
+- developer template override may remain available only as an explicit CLI option.
+
+The template binary and its release SHA-256 become part of the versioned application contract.
