@@ -355,3 +355,12 @@ packaged template identity automatically.
 The template contains no legacy DUT / RawData production values. Real FATP archives,
 RawData archives, CSV/WAV files, generated summaries, generated reports, DUT SN/MAC,
 operator/tester IDs, and other factory-sensitive data must still never be committed.
+
+
+## V14.5 output folder
+
+Normal V14.5 BAT/GUI operation writes all generated Excel workbooks under:
+
+`report/`
+
+This includes both `summary_*.xlsx` and `report_*.xlsx`. The folder is created automatically when the tool runs.
