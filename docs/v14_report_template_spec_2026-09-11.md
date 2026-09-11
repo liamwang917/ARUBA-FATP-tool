@@ -222,7 +222,7 @@ Locked implementation: append one new `Metadata` sheet after `Sensitivity`, usin
 ## 9. V14 implementation principle
 
 1. V13.6 continues to parse archives and produce normalized data.
-2. V14 populates a **copy of the approved report template**.
+2. V14 automatically populates a **copy of the approved local report template** as part of the same V13.6 run; normal users do not manually select intermediate summary workbooks.
 3. V14 writes only to approved data-input regions.
 4. Existing template charts/limits/styles stay owned by the template.
 5. V14 validates the complete source frequency axis against the destination row-39 template axis before writing.
@@ -391,3 +391,61 @@ These issues already exist in the approved master and are outside V14's allowed-
 2. The workbook's existing `_xlnm._FilterDatabase` range is stale/inconsistent with the current data extent. Preserve it unchanged unless the user separately approves a template-maintenance revision.
 
 V14 implementation must not silently "clean up" these pre-existing template behaviors.
+
+
+## 16. Final user workflow — end-to-end automatic report generation
+
+V14 is not a separate manual post-processing utility. It is the final report layer of the existing V13.6 pipeline.
+
+The normal user flow is:
+
+```text
+run_build_summary.bat / V14 launcher
+        ↓
+select ARUBA_MIC / ARUBA_PREMIC archive(s)
++ optional RawData archive
+        ↓
+V13.6 parsing / matching / normalized data generation
+        ↓
+V14 automatically loads the approved local report-template master
+        ↓
+V14 populates the report template
+        ↓
+final V14 report workbook(s) are written
+```
+
+The user must **not** be required to manually select V13.6 summary workbooks during normal operation.
+
+V13.6 summary workbooks may still be generated/retained as debug or regression artifacts, but V14 must consume the normalized V13.6 data automatically within the same run.
+
+### Template handling
+
+The real master workbook is not committed to the public repository because the supplied file contains production DUT data.
+
+For the final Windows delivery package, the approved/sanitized master template must be placed in a fixed local template location bundled with the tool, for example:
+
+`templates/Post-MIC limit_EV3_20260911.xlsx`
+
+Normal users do not browse for this file on each run.
+
+At runtime the tool must:
+
+1. locate the expected template automatically;
+2. verify its expected SHA-256 / approved-template identity;
+3. fail with a clear installation/configuration error if the template is missing or incorrect;
+4. never silently substitute another workbook.
+
+A template file-picker may exist only as an explicit developer/debug override, not as the normal production workflow.
+
+### Final output behavior
+
+For every Test Type / Mode discovered by V13.6, V14 should directly create the corresponding final report, for example:
+
+```text
+report_MIC_Online.xlsx
+report_MIC_Offline.xlsx
+report_PREMIC_Online.xlsx
+report_PREMIC_Offline.xlsx
+```
+
+Only reports for discovered Test Type / Mode combinations are produced.
