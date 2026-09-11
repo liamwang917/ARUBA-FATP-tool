@@ -1,4 +1,4 @@
-# V14 Report Template Integration Specification — draft v14.4
+# V14 Report Template Integration Specification — draft v14.5
 
 Date: 2026-09-11
 
@@ -44,6 +44,7 @@ Approved exceptions in V14.4:
 6. Before writing new DUT data, the approved DUT data regions are cleared so no legacy production rows remain.
 7. The stale `xl/calcChain.xml` part and its workbook relationship/content-type entry are removed because SNR/Sensitivity formula cells become literal values.
 8. Workbook calculation properties are updated to request Excel recalculation on open: `calcMode="auto"`, `fullCalcOnLoad="1"`, and `forceFullCalc="1"`.
+9. `Frequency Response_1_3!D35` is corrected to `=D28+D32` and `D36` is corrected to `=D28-D32`, so the 80 Hz upper/lower limits use Mean ± 10 sigma consistently with the row labels and neighboring frequencies.
 
 No other layout/style/formula/chart changes are approved.
 
@@ -211,7 +212,9 @@ Source: V13.6 `01_Metadata`.
 
 Requirements:
 
-- preserve the complete V13.6 Metadata field set;
+- preserve the complete V13.6 Metadata field set and value precision;
+- `Test_Time` remains the compact 14-digit filename timestamp used by the report;
+- Main Station `test_start_time` / `test_end_time` must preserve production fractional seconds to millisecond precision (for example `2026-09-10 16:33:19.092`); do not truncate them to whole seconds;
 - do not remove identifiers/context fields merely to fit the visual template;
 - missing values remain blank;
 - IDs/MAC-like values remain text-safe;
@@ -268,7 +271,7 @@ Required workbook-internal changes include:
 - remove the calcChain override from `[Content_Types].xml`;
 - set `calcMode="auto"`, `fullCalcOnLoad="1"`, and `forceFullCalc="1"` in workbook calculation properties;
 - add the `Metadata` worksheet relationship/content type correctly;
-- update worksheet `<dimension>` refs when the written data extent grows.
+- update worksheet `<dimension>` refs only when the actual written extent grows beyond the original bound. Preserve the original start cell and never shrink an existing max row/column merely because current DUT data are smaller.
 
 For written text, shared-string bookkeeping must remain valid. Using inline strings for newly written cells is acceptable if Excel opens cleanly and the package remains valid.
 
@@ -367,6 +370,9 @@ Before any V14 report generator is considered ready:
 12. Do not use openpyxl/LibreOffice round-trip for the approved V14 master.
 13. Preserve protected OOXML parts byte-for-byte.
 14. Output is invalid if Microsoft Excel displays repair/recovery/corruption warnings.
+15. `Frequency Response_1_3!D35 = D28+D32` and `D36 = D28-D32` are approved corrections.
+16. Metadata `test_start_time` / `test_end_time` preserve millisecond precision.
+17. Worksheet `<dimension>` refs must continue to cover all existing cells and must not be unnecessarily shrunk or reset to `A1`.
 
 There are no remaining product-level semantic decisions blocking implementation. The next step is implementation/review focused on workbook integrity and preservation.
 
@@ -383,14 +389,18 @@ Therefore:
 - no data row is dropped merely to make chart and statistics row counts equal.
 
 
-## 15. Known pre-existing template issues — preserve, do not fix in V14
+## 15. Known pre-existing template issues
 
-These issues already exist in the approved master and are outside V14's allowed-change scope:
+The user has now explicitly approved correction of the former 80 Hz sigma-reference anomaly:
 
-1. `Frequency Response_1_3!D35/D36` uses the 6-sigma row reference where the surrounding 10-sigma pattern uses row 32. Record only; do not correct it in V14.
-2. The workbook's existing `_xlnm._FilterDatabase` range is stale/inconsistent with the current data extent. Preserve it unchanged unless the user separately approves a template-maintenance revision.
+- `Frequency Response_1_3!D35` → `=D28+D32`
+- `Frequency Response_1_3!D36` → `=D28-D32`
 
-V14 implementation must not silently "clean up" these pre-existing template behaviors.
+The remaining pre-existing issue stays outside V14's change scope:
+
+1. The workbook's existing `_xlnm._FilterDatabase` range is stale/inconsistent with the current data extent. Preserve it unchanged unless the user separately approves a template-maintenance revision.
+
+Do not silently clean up any other template behavior.
 
 
 ## 16. Final user workflow — end-to-end automatic report generation
