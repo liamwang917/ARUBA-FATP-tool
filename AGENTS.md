@@ -131,3 +131,12 @@ For the approved V14 report master:
 - treat any Excel repair/recovery/corrupt warning as a failed output.
 
 Do not merge V14 to main unless the user explicitly approves it.
+
+
+## V14 End-to-End User Workflow
+
+V14 is integrated into the V13.6 run. Normal users select only the FATP archive inputs (MIC/PREMIC and optional RawData). They must not be required to manually select V13.6 summary XLSX files or browse for the report template on every run.
+
+The production delivery package must locate its approved local template automatically from a fixed packaged/configured location, validate its identity, then produce the final V14 report(s) in the same run.
+
+Intermediate V13.6 summaries may remain available for debug/regression, but they are not a required manual input step.
