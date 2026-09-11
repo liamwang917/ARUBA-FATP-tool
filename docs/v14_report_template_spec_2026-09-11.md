@@ -1,4 +1,4 @@
-# V14 Report Template Integration Specification — draft v14.0
+# V14 Report Template Integration Specification — draft v14.1
 
 Date: 2026-09-11
 
@@ -6,7 +6,7 @@ Date: 2026-09-11
 
 V13.6 on `main` remains the validated production data-normalization pipeline.
 
-V14 is a **report-template integration phase**. This document records the analyzed structure of the user-supplied workbook:
+V14 is a **report-template integration phase** based on:
 
 `Post-MIC limit_EV2_20260902-2.xlsx`
 
@@ -14,15 +14,15 @@ The V14 branch is:
 
 `work/v14-report-template-20260911`
 
-This phase is intentionally **analysis/contract only**. Do not change the V13.6 parser/data contract and do not merge V14 to `main` until the report-template mapping has been validated with the user.
+This phase remains analysis/contract only. Do not change the V13.6 parser/data contract and do not merge V14 to `main` until the report-template behavior has been validated with the user.
 
 ## 1. Non-negotiable template preservation rule
 
 The supplied workbook is the visual/report master.
 
-Until the user explicitly approves a change, V14 must not alter the template's:
+Unless explicitly approved below, V14 must not alter the template's:
 
-- worksheet names, order, or hidden/visible state;
+- existing worksheet names or order;
 - row heights or column widths;
 - merged cells;
 - fonts, fills, borders, alignments, or number formats;
@@ -30,26 +30,35 @@ Until the user explicitly approves a change, V14 must not alter the template's:
 - conditional formatting;
 - print/page settings;
 - defined names / AutoFilter;
-- formulas or external-link relationships;
 - existing limit tables.
 
 Implementation must work on a **copy** of the template. The original template is never modified in place.
 
-If implementation later requires changing any item above, stop and request explicit approval first.
+Approved exceptions in V14.1:
+
+1. `Frequency Response_1_12` changes from hidden to visible.
+2. `Frequency Response_orignal` changes from hidden to visible.
+3. A new Metadata worksheet is added to the report.
+4. SNR data rows use V13.6 Main Station SNR values instead of the template's legacy calculated SNR formula.
+5. Sensitivity data rows use V13.6 Main Station Sensitivity values instead of the template's legacy FR-at-1k formula.
+
+No other layout/style/formula/chart changes are approved.
 
 ## 2. Template identity
 
 - Filename: `Post-MIC limit_EV2_20260902-2.xlsx`
 - Size: 5,422,338 bytes
 - SHA-256: `5c24f2dbd1cc5350421c902369e7e250718f1fc20aa04f6e2f89ffe633527315`
-- Worksheets: 11
-- Charts: 8
-- Hidden worksheets: 2
+- Original worksheets: 11
+- Original charts: 8
+- Original hidden worksheets: 2
 - External workbook links: 1 legacy workbook relationship
 
 The binary workbook is not committed to this public repository at this stage. The manifest records its structure and hash only.
 
-## 3. Worksheet contract — exact names/order/state
+## 3. Worksheet contract
+
+### Original master state
 
 1. `Audio Limit for EV` — visible
 2. `Audio Limit for EV3` — visible
@@ -64,6 +73,15 @@ The binary workbook is not committed to this public repository at this stage. Th
 11. `Sensitivity` — visible
 
 Important: `Frequency Response_orignal` is intentionally recorded with the template's current spelling. Do not rename it.
+
+### Approved V14 target state
+
+- `Frequency Response_1_12` → visible
+- `Frequency Response_orignal` → visible
+- add one new Metadata sheet
+- all other existing worksheet names/order/states remain unchanged
+
+The exact Metadata sheet name/order is still an open item; recommendation is `Metadata` appended after `Sensitivity` so all existing sheet positions remain untouched.
 
 ## 4. Template calculation/report layout
 
@@ -91,22 +109,21 @@ The template already contains formula blocks for Mean / MAX / MIN / STDEV / sigm
 - column A: SN;
 - column B: scalar value.
 
-Do not add columns or move the existing data area without explicit approval.
+The statistics/limit formulas in rows 28–36 stay in place.
+
+Approved V14 change:
+
+- SNR row 40 onward column B is populated from V13.6 `08_SNR.SNR_dB`.
+- Sensitivity row 40 onward column B is populated from V13.6 `09_Sensitivity.Sensitivity_dBFS`.
+- the legacy per-DUT formulas in SNR/Sensitivity row 40 onward are replaced by source values only in the generated report copy.
 
 ### 4.3 Limit sheets
 
-`Audio Limit for EV` and `Audio Limit for EV3` contain fixed product-limit tables for:
-
-- Frequency Response;
-- THD;
-- Phase;
-- Noise Floor;
-- SNR;
-- Sensitivity.
+`Audio Limit for EV` and `Audio Limit for EV3` contain fixed product-limit tables for Frequency Response, THD, Phase, Noise Floor, SNR, and Sensitivity.
 
 `Audio Limit_Sigma` is formula-driven and references the measurement/statistics sheets.
 
-The current workbook also contains a legacy external workbook link used by some frequency-reference formulas. Preserve that relationship unchanged during the V14 analysis phase.
+The current workbook contains a legacy external workbook link used by frequency-reference formulas in `Audio Limit for EV` and `Audio Limit for EV3`. Preserve that relationship for now; whether it should be internalized is still open.
 
 ## 5. Existing chart contract
 
@@ -121,11 +138,9 @@ The template contains one chart on each of:
 - `SNR`
 - `Sensitivity`
 
-Charts already reference the template's existing data regions. V14 must populate data without moving or rebuilding charts unless separately approved.
+Charts must not be moved or rebuilt.
 
-## 6. Proposed V13.6 → template source mapping
-
-This is the working mapping for V14. No workbook modification is approved yet.
+## 6. V13.6 → template source mapping
 
 | V13.6 normalized source | Template destination |
 | --- | --- |
@@ -137,90 +152,119 @@ This is the working mapping for V14. No workbook modification is approved yet.
 | `07_Noise` | `Noise Floor` |
 | `08_SNR` | `SNR` |
 | `09_Sensitivity` | `Sensitivity` |
-| `01_Metadata` | no direct template destination yet |
+| `01_Metadata` | new Metadata sheet |
 
 ### Curve-sheet row mapping
 
-For the curve sheets, the intended data-region mapping is:
+For the curve sheets:
 
 - SN → column A;
 - Test_Time → column B;
-- Result/context → column C where the existing template already has a third context column;
-- frequency values → column D onward by matching frequency header, not by blind positional shifting.
+- Result/context → column C;
+- frequency values → column D onward by matching frequency header, never by blind positional shifting.
 
-The exact Result source used in column C must remain consistent with V13.6 semantics and be finalized per sheet before implementation.
+For `Frequency Response_1_3`, THD, Phase, and Noise, column C follows the corresponding V13.6 Result semantics.
 
-### RawData hidden sheets
+### RawData sheets
 
-For `Frequency Response_1_12` and `Frequency Response_orignal`, V13.6 currently supplies:
+`Frequency Response_1_12` and `Frequency Response_orignal` are now approved to be visible.
 
-- SN;
-- Test_Time;
-- RawData_Match_Status;
-- frequency values.
+V13.6 supplies SN, Test_Time, RawData_Match_Status, and frequency values.
 
-The template's existing A/B/C behavior must be preserved; any decision to place `RawData_Match_Status` in column C requires user approval before implementation.
+Column-C content is still open. Recommendation: use `RawData_Match_Status` in column C because it explains blank rows (`NOT_PROVIDED`, `UNMATCHED`, `AMBIGUOUS`) without inventing PASS/FAIL.
 
-## 7. Important semantic differences that require explicit user approval
-
-These are analysis findings, not approved changes.
+## 7. Approved scalar semantics
 
 ### 7.1 SNR
 
-The current template computes SNR in column B from Frequency Response at 1 kHz minus Noise Floor at 1 kHz.
+V14 uses V13.6 Main Station SNR as authoritative.
 
-V13.6 instead treats Main Station `SNR` as the authoritative scalar value.
+Do not calculate V14 DUT SNR from FR@1k - Noise@1k.
 
-Do not change the existing SNR formula or replace it with V13.6 SNR until the user explicitly selects the desired V14 behavior.
+The template's statistics/limit formulas continue to operate on the populated scalar data region.
 
 ### 7.2 Sensitivity
 
-The current template derives Sensitivity from the Frequency Response 1 kHz value.
+V14 uses V13.6 Main Station Sensitivity as authoritative.
 
-V13.6 separately provides Main Station `Sensitivity`.
+Do not derive V14 DUT Sensitivity from FR@1k.
 
-Do not change the existing Sensitivity formula or replace it with V13.6 Sensitivity until explicitly approved.
+The template's statistics/limit formulas continue to operate on the populated scalar data region.
 
-### 7.3 Metadata
+## 8. Metadata
 
-The template has no dedicated Metadata sheet equivalent to V13.6 `01_Metadata`.
+Metadata is approved for inclusion in the template report.
 
-Do not add a new worksheet to the report template without explicit approval.
+Source: V13.6 `01_Metadata`.
 
-## 8. V14 implementation principle
+Requirements:
 
-V14 should be additive:
+- preserve the complete V13.6 Metadata field set;
+- do not remove identifiers/context fields merely to fit the visual template;
+- missing values remain blank;
+- IDs/MAC-like values remain text-safe;
+- adding Metadata must not alter any existing sheet layout or chart.
+
+Recommended implementation: append one new `Metadata` sheet after `Sensitivity`, using the V13.6 Metadata table structure. Exact sheet name/order/style remains to be confirmed by the user before implementation.
+
+## 9. V14 implementation principle
 
 1. V13.6 continues to parse archives and produce normalized data.
-2. V14 takes normalized V13.6 data and populates a **copy of the approved report template**.
+2. V14 populates a **copy of the approved report template**.
 3. V14 writes only to approved data-input regions.
-4. Template formulas/charts/limits/styles remain owned by the template.
-5. V14 must validate frequency headers before writing.
-6. If a source frequency is not found in the template header, do not shift data; log/report the mismatch.
+4. Existing template charts/limits/styles stay owned by the template.
+5. V14 validates frequency headers before writing.
+6. If a source frequency is not found in the template header, do not shift data; report the mismatch.
 7. Missing source values remain blank rather than being synthesized.
-8. The existing V13.6 summary output remains available as a regression/debug artifact until V14 is validated.
+8. Existing V13.6 summary output remains available as a regression/debug artifact until V14 is validated.
 
-## 9. V14 initial acceptance criteria
+## 10. Capacity / fixed-range finding
+
+The template uses fixed statistics ranges:
+
+- Frequency Response / FR 1/12 / Original / THD / Phase: generally row 40 through row 986 → 947 DUT rows.
+- Noise Floor: row 40 through row 987 → 948 DUT rows.
+- SNR / Sensitivity: row 40 through row 989 → 950 DUT rows.
+
+V14 must not silently truncate data.
+
+Before implementation, select one policy:
+
+A. **Fixed-capacity policy (recommended for first V14):** if any output exceeds the template's supported row count, stop that report with a clear error/warning and do not silently omit rows.
+
+B. Dynamic-extension policy: extend formulas/chart ranges/styles for additional rows. This changes template formulas/ranges and therefore requires explicit approval and more regression testing.
+
+## 11. External-link finding
+
+The master workbook contains one legacy external workbook relationship. `Audio Limit for EV` and `Audio Limit for EV3` contain formulas that reference cells in an external `[1]Frequency Response` workbook.
+
+This can produce an Excel "Update Links" dependency when the original external source is unavailable.
+
+Current policy: preserve it unchanged.
+
+Open decision: keep the external dependency permanently, or later replace those references with equivalent internal template references after validation.
+
+## 12. V14 acceptance criteria
 
 Before any V14 report generator is considered ready:
 
-- the template copy opens successfully in Excel;
-- all 11 sheet names/order/states match the master;
-- hidden sheets remain hidden;
-- all 8 charts remain present;
-- no row/column/merge/style change is introduced;
-- no formula/external-link change is introduced unless explicitly approved;
+- generated report is based on a copy of the master;
+- all original sheet names/order remain unchanged;
+- `Frequency Response_1_12` and `Frequency Response_orignal` are visible;
+- the approved Metadata sheet is present;
+- all 8 existing charts remain present and unchanged;
+- existing row/column dimensions, merges, styles, conditional formatting, and print settings remain unchanged;
+- SNR/Sensitivity DUT data use V13.6 Main Station values;
+- statistics/limit blocks remain functional;
 - V13.6 regression tests remain green;
 - report-data writes are frequency-keyed and do not shift columns;
 - no production workbook or factory-sensitive data is committed to the public repository.
 
-## 10. Open items before implementation
+## 13. Remaining open items before implementation
 
-1. Decide whether V14 SNR uses the template's current calculated formula or V13.6 Main Station SNR.
-2. Decide whether V14 Sensitivity uses the template's current FR-at-1k formula or V13.6 Main Station Sensitivity.
-3. Confirm column-C content for the two hidden RawData sheets.
-4. Decide whether `01_Metadata` remains only in V13.6 summary or is represented somewhere in the report.
-5. Confirm how many DUT rows V14 must support relative to the template's existing fixed formula/chart ranges.
-6. Decide whether the legacy external workbook link should remain permanently or be internalized in a later approved revision.
+1. RawData sheets column C: use `RawData_Match_Status` (recommended) or leave blank?
+2. Metadata sheet exact name/order/style: recommended `Metadata` appended after `Sensitivity`, using V13.6 Metadata table structure.
+3. Capacity policy: fixed-capacity stop/warn vs dynamic formula/chart extension.
+4. Legacy external workbook link: preserve permanently vs later internalize after validation.
 
-Until these items are resolved, V14 remains a template-preservation/design PR only.
+No other product/data-semantic conflict was found in the current template analysis.
