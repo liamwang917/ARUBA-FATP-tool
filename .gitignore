@@ -8,6 +8,5 @@ Thumbs.db
 ~$*.xlsx
 ~$*.xls
 *.tmp
-templates/Post-MIC limit_EV3_20260911.xlsx
 summary_*.xlsx
 report_*.xlsx
