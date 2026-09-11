@@ -1,5 +1,19 @@
 # Changelog
 
+## v14.4 — workbook-integrity implementation lock (2026-09-11)
+
+Locked the implementation rules required after independent OOXML review:
+
+- clear legacy DUT rows before population;
+- exact column-C semantics by destination sheet;
+- frequency-axis mismatch is fatal;
+- 947-DUT statistical capacity remains independent of smaller chart coverage;
+- remove stale calcChain and force recalculation on Excel open;
+- prohibit openpyxl/LibreOffice round-trip for the approved master template;
+- require protected OOXML parts to remain byte-identical;
+- preserve known pre-existing template defects without silently repairing them;
+- Microsoft Excel repair/recovery/corruption warning = output failure.
+
 ## v14.2 — replacement EV3 master and locked template rules (2026-09-11)
 
 Replaced the V14 design reference with `Post-MIC limit_EV3_20260911.xlsx` and confirmed the legacy external workbook link is removed.
