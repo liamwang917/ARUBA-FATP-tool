@@ -1,4 +1,4 @@
-# V14 report-template manifest
+# V14 report-template manifest — V14.3
 
 This manifest describes the current user-supplied V14 master workbook. The binary workbook is intentionally not committed to this public repository.
 
@@ -42,6 +42,16 @@ This manifest describes the current user-supplied V14 master workbook. The binar
 - FR / FR 1/12 / Original / THD / Phase statistics use rows 40:986 (947 DUT rows).
 - Noise statistics use rows 40:987 (948 DUT rows).
 - SNR / Sensitivity statistics use rows 40:989 (950 DUT rows).
+
+### Approved capacity policy
+
+- Global data/statistics capacity = **947 DUTs**.
+- All populated DUT rows up to 947 remain part of Mean / MAX / MIN / STDEV.P / sigma / limit calculations.
+- Existing chart coverage may be smaller than 947 and is treated only as a visualization limitation.
+- Do not truncate DUT data to match chart coverage.
+- Do not expand/rebuild chart series/ranges in V14.3.
+- If imported DUT count is larger than a chart's existing coverage, report a runtime/console warning while keeping the report valid.
+- If DUT count exceeds 947, stop the report and do not silently truncate.
 
 ## Preservation note
 
