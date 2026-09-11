@@ -237,7 +237,7 @@ class V144ReportTests(unittest.TestCase):
     def test_operational_launcher_uses_fixed_v145_workflow(self):
         launcher = (Path(__file__).parents[1] / "tools" / "run_v14_report.bat").read_text(encoding="utf-8")
         self.assertIn("V14.5 RC - Operational UAT", launcher)
-        self.assertIn("templates\\Post-MIC limit_EV3_20260911.xlsx", launcher)
+        self.assertIn("templates\\Post-MIC limit_20260911.xlsx", launcher)
         self.assertIn("This UAT launcher accepts no arguments.", launcher)
         self.assertNotIn("src.v14_main %*", launcher)
 
