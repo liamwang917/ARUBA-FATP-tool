@@ -124,7 +124,7 @@ def _display(value: object) -> object:
     return text.upper() if text.casefold() in {"pass", "fail"} else value
 
 
-def _cell(row: ET.Element, column: int, value: object) -> None:
+def _cell(row: ET.Element, column: int, value: object, *, compact_datetime: bool = True) -> None:
     reference = f"{_column(column)}{row.attrib['r']}"
     cell = next((item for item in row.findall(f"{{{NS}}}c") if item.attrib.get("r") == reference), None)
     if cell is None:
@@ -135,7 +135,8 @@ def _cell(row: ET.Element, column: int, value: object) -> None:
         cell.attrib.pop("t", None)
         return
     if isinstance(value, datetime):
-        value = value.strftime("%Y%m%d%H%M%S")
+        value = (value.strftime("%Y%m%d%H%M%S") if compact_datetime else
+                 value.strftime("%Y-%m-%d %H:%M:%S") + f".{value.microsecond // 1000:03d}")
     if isinstance(value, bool):
         value = int(value)
     if isinstance(value, (int, float)):
@@ -187,10 +188,17 @@ def _clear_existing(root: ET.Element, first_column: int, last_column: int, end_r
                 cell.attrib.pop("t", None)
 
 
-def _dimension_last_row(root: ET.Element) -> int:
-    ref = root.find(f"{{{NS}}}dimension").attrib.get("ref", "A1")
-    match = re.search(r"(\d+)$", ref)
-    return int(match.group(1)) if match else 1
+def _set_dimension(root: ET.Element, required_last_column: int, required_last_row: int) -> None:
+    dimension = root.find(f"{{{NS}}}dimension")
+    ref = dimension.attrib.get("ref", "A1")
+    match = re.fullmatch(r"([A-Z]+)(\d+)(?::([A-Z]+)(\d+))?", ref)
+    if not match:
+        return
+    start_column, start_row, end_column, end_row = match.groups()
+    end_column = end_column or start_column
+    end_row = int(end_row or start_row)
+    end_index = max(_xml_column(end_column + "1"), required_last_column)
+    dimension.attrib["ref"] = f"{start_column}{start_row}:{_column(end_index)}{max(end_row, required_last_row)}"
 
 
 def _clear_and_write_curve(xml: bytes, header: list[object], rows: list[dict[str, object]], context: str, end_row: int) -> bytes:
@@ -213,8 +221,7 @@ def _clear_and_write_curve(xml: bytes, header: list[object], rows: list[dict[str
         _cell(row, 3, source.get(context))
         for index, frequency in enumerate(source_axis, 4):
             _cell(row, index, source.get(frequency))
-    last_row = max(_dimension_last_row(root), 39 + len(rows))
-    root.find(f"{{{NS}}}dimension").attrib["ref"] = f"A1:{_column(len(destination_axis) + 3)}{last_row}"
+    _set_dimension(root, len(destination_axis) + 3, 39 + len(rows))
     return _serialize(root, xml)
 
 
@@ -224,7 +231,7 @@ def _clear_and_write_scalar(xml: bytes, rows: list[dict[str, object]], value_key
     for offset, source in enumerate(rows):
         row = _ensure_row(root, 40 + offset)
         _cell(row, 1, source.get("SN")); _cell(row, 2, source.get(value_key))
-    root.find(f"{{{NS}}}dimension").attrib["ref"] = f"A1:B{max(_dimension_last_row(root), 39 + len(rows))}"
+    _set_dimension(root, 2, 39 + len(rows))
     return _serialize(root, xml)
 
 
@@ -235,7 +242,7 @@ def _metadata_xml(header: list[object], rows: list[dict[str, object]]) -> bytes:
     for number, values in enumerate([dict(zip(header, header))] + rows, 1):
         row = ET.SubElement(data, f"{{{NS}}}row", {"r": str(number)})
         for column, key in enumerate(header, 1):
-            _cell(row, column, values.get(key))
+            _cell(row, column, values.get(key), compact_datetime=False)
     return ET.tostring(root, encoding="utf-8", xml_declaration=True)
 
 
@@ -248,6 +255,21 @@ def _add_metadata(workbook, rels, content_types, header, rows, workbook_source: 
     ET.SubElement(rels, f"{{{PKG_REL_NS}}}Relationship", {"Id": rid, "Type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet", "Target": "worksheets/sheet12.xml"})
     ET.SubElement(content_types, f"{{{CT_NS}}}Override", {"PartName": "/xl/worksheets/sheet12.xml", "ContentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"})
     return (_serialize(workbook, workbook_source), ET.tostring(rels, encoding="utf-8", xml_declaration=True), ET.tostring(content_types, encoding="utf-8", xml_declaration=True), _metadata_xml(header, rows))
+
+
+def _apply_v145_limit_correction(xml: bytes) -> bytes:
+    root = _xml(xml)
+    data = root.find(f"{{{NS}}}sheetData")
+    for row_number, formula in ((35, "D28+D32"), (36, "D28-D32")):
+        row = _ensure_row(root, row_number)
+        cell = next((item for item in row.findall(f"{{{NS}}}c") if item.attrib.get("r") == f"D{row_number}"), None)
+        if cell is None:
+            cell = ET.SubElement(row, f"{{{NS}}}c", {"r": f"D{row_number}"})
+        for child in list(cell):
+            cell.remove(child)
+        cell.attrib.pop("t", None)
+        ET.SubElement(cell, f"{{{NS}}}f").text = formula
+    return _serialize(root, xml)
 
 
 def _chart_capacity(package: zipfile.ZipFile) -> int:
@@ -295,6 +317,7 @@ def build_v14_report(template: Path, summaries: list[Path], output: Path, logger
         for source_sheet, (target, context, end_row) in SHEETS.items():
             header, rows = source[source_sheet]
             changes[paths[target]] = _clear_and_write_curve(original.read(paths[target]), header, rows, context, end_row)
+        changes[paths["Frequency Response_1_3"]] = _apply_v145_limit_correction(changes[paths["Frequency Response_1_3"]])
         for source_sheet, (target, value, end_row) in SCALARS.items():
             _, rows = source[source_sheet]
             changes[paths[target]] = _clear_and_write_scalar(original.read(paths[target]), rows, value, end_row)

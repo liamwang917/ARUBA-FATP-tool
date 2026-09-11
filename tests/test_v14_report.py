@@ -79,6 +79,14 @@ def add_sparse_later_row(path):
     wb.save(path)
 
 
+def set_template_dimension(path, sheet_xml, ref):
+    with zipfile.ZipFile(path, "a", zipfile.ZIP_DEFLATED) as package:
+        root = ET.fromstring(package.read(sheet_xml))
+        namespace = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
+        root.find(namespace + "dimension").attrib["ref"] = ref
+        package.writestr(sheet_xml, ET.tostring(root, encoding="utf-8", xml_declaration=True))
+
+
 def add_excel_compatibility_namespaces(path):
     """Add real-master-like compatibility prefixes without using the V14 writer."""
     namespaces = ' xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:x15="http://schemas.microsoft.com/office/spreadsheetml/2010/11/main" xmlns:xr="http://schemas.microsoft.com/office/spreadsheetml/2014/revision"'
@@ -117,6 +125,8 @@ class V144ReportTests(unittest.TestCase):
         self.assertIsNone(wb["Frequency Response_1_3"]["A41"].value)
         self.assertEqual(wb["SNR"]["B40"].value, 31.5); self.assertEqual(wb["Sensitivity"]["B40"].value, -31.5)
         self.assertEqual(wb["Metadata"]["C2"].value, "x0")
+        self.assertEqual(wb["Frequency Response_1_3"]["D35"].value, "=D28+D32")
+        self.assertEqual(wb["Frequency Response_1_3"]["D36"].value, "=D28-D32")
         with zipfile.ZipFile(self.output) as after:
             self.assertNotIn("xl/calcChain.xml", after.namelist())
             self.assertFalse(any(name.startswith("xl/externalLinks/") for name in after.namelist()))
@@ -151,11 +161,22 @@ class V144ReportTests(unittest.TestCase):
     def test_test_time_is_compact_template_text_and_clear_does_not_expand_grid(self):
         wb = load_workbook(self.summary)
         wb["03_FR_1_3"]["B2"] = datetime(2026, 9, 11, 12, 34, 56)
+        wb["01_Metadata"]["D1"] = "test_start_time"
+        wb["01_Metadata"]["D2"] = datetime(2026, 9, 11, 12, 34, 56, 789000)
         wb.save(self.summary)
         self.build()
         self.assertEqual(load_workbook(self.output)["Frequency Response_1_3"]["B40"].value, "20260911123456")
+        self.assertEqual(load_workbook(self.output)["Metadata"]["D2"].value, "2026-09-11 12:34:56.789")
         with zipfile.ZipFile(self.output) as report:
             self.assertNotIn(b'r="986"', report.read("xl/worksheets/sheet4.xml"))
+
+    def test_dimension_ref_is_not_shrunk(self):
+        set_template_dimension(self.template, "xl/worksheets/sheet4.xml", "A4:CE383")
+        self.build()
+        with zipfile.ZipFile(self.output) as report:
+            root = ET.fromstring(report.read("xl/worksheets/sheet4.xml"))
+            namespace = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
+            self.assertEqual(root.find(namespace + "dimension").attrib["ref"], "A4:CE383")
 
     def test_sparse_template_rows_remain_ascending_for_large_population(self):
         add_sparse_later_row(self.template)
