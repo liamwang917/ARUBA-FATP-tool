@@ -459,3 +459,28 @@ report_PREMIC_Offline.xlsx
 ```
 
 Only reports for discovered Test Type / Mode combinations are produced.
+
+
+## 17. Noise Floor chart log-axis warning — approved V14.5 fix
+
+Microsoft Excel runtime validation showed one remaining chart warning on the `Noise Floor` worksheet:
+
+`Negative or zero values cannot be plotted correctly on log charts.`
+
+Cause:
+- the Noise chart uses a logarithmic X axis;
+- its X source currently includes 0 Hz;
+- the chart X-axis visible minimum is already 100 Hz.
+
+Approved fix:
+- keep all Noise Floor worksheet data and statistics unchanged from 0–7990 Hz;
+- keep the existing chart type, style, position, axes, formatting, and log scale unchanged;
+- change only the Noise Floor chart series source ranges so plotted X/Y data start at 100 Hz instead of 0 Hz;
+- for the approved master, 100 Hz is column N, so chart X ranges start at row-39 column N and each corresponding Y series starts at the same column;
+- do not alter FR/THD/Phase/SNR/Sensitivity charts;
+- do not remove or modify worksheet data below 100 Hz.
+
+Acceptance:
+- Microsoft Excel opens without the logarithmic-axis popup;
+- Noise data/statistics remain unchanged;
+- chart appearance remains otherwise unchanged.
