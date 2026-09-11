@@ -73,6 +73,12 @@ def make_template(path, axis=(100, 200), chart_capacity=1):
         package.writestr("[Content_Types].xml", ET.tostring(types, encoding="utf-8", xml_declaration=True))
 
 
+def add_sparse_later_row(path):
+    wb = load_workbook(path)
+    wb["Frequency Response_1_3"].cell(383, 1).value = "STYLE-ANCHOR"
+    wb.save(path)
+
+
 def add_excel_compatibility_namespaces(path):
     """Add real-master-like compatibility prefixes without using the V14 writer."""
     namespaces = ' xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:x15="http://schemas.microsoft.com/office/spreadsheetml/2010/11/main" xmlns:xr="http://schemas.microsoft.com/office/spreadsheetml/2014/revision"'
@@ -150,6 +156,18 @@ class V144ReportTests(unittest.TestCase):
         self.assertEqual(load_workbook(self.output)["Frequency Response_1_3"]["B40"].value, "20260911123456")
         with zipfile.ZipFile(self.output) as report:
             self.assertNotIn(b'r="986"', report.read("xl/worksheets/sheet4.xml"))
+
+    def test_sparse_template_rows_remain_ascending_for_large_population(self):
+        add_sparse_later_row(self.template)
+        make_summary(self.summary, rows=320)
+        self.build()
+        with zipfile.ZipFile(self.output) as report:
+            root = ET.fromstring(report.read("xl/worksheets/sheet4.xml"))
+            namespace = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
+            rows = [int(row.attrib["r"]) for row in root.find(namespace + "sheetData")]
+        self.assertEqual(rows, sorted(rows))
+        self.assertEqual(len(rows), len(set(rows)))
+        self.assertIn(383, rows)
 
     def test_capacity_and_chart_warning(self):
         make_summary(self.summary, rows=MAX_DUTS)

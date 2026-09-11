@@ -163,6 +163,13 @@ def _ensure_row(root: ET.Element, number: int) -> ET.Element:
     row = next((item for item in data.findall(f"{{{NS}}}row") if item.attrib.get("r") == str(number)), None)
     if row is None:
         row = ET.SubElement(data, f"{{{NS}}}row", {"r": str(number)})
+        for index, existing in enumerate(list(data)):
+            if existing is row:
+                break
+            if int(existing.attrib.get("r", "0")) > number:
+                data.remove(row)
+                data.insert(index, row)
+                break
     return row
 
 
