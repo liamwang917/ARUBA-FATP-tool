@@ -35,6 +35,10 @@ SHEETS = {
     "07_Noise": ("Noise Floor", "Result", 987),
 }
 SCALARS = {"08_SNR": ("SNR", "SNR_dB", 989), "09_Sensitivity": ("Sensitivity", "Sensitivity_dBFS", 989)}
+CURVE_CHART_SHEETS = (
+    "Frequency Response_1_3", "Frequency Response_1_12",
+    "Frequency Response_orignal", "THD", "Phase", "Noise Floor",
+)
 
 
 class V14ReportError(ValueError):
@@ -272,6 +276,28 @@ def _apply_v145_limit_correction(xml: bytes) -> bytes:
     return _serialize(root, xml)
 
 
+def _apply_chart_source_updates(payload: bytes, sheet: str) -> bytes:
+    """Apply the two explicitly approved V14.5 chart-source exceptions only."""
+    text = payload.decode("utf-8")
+    escaped = re.escape(sheet)
+
+    def sn_only(match: re.Match) -> str:
+        row = int(match.group("row"))
+        return match.group(0) if row < 40 else f"'{sheet}'!$A${row}"
+
+    text = re.sub(
+        rf"'{escaped}'!\$A\$(?P<row>\d+):\$C\$(?P=row)", sn_only, text,
+    )
+    if sheet == "Noise Floor":
+        text = re.sub(
+            r"'Noise Floor'!\$D\$(?P<row>\d+):\$ADW\$(?P=row)",
+            lambda match: (match.group(0) if int(match.group("row")) < 39
+                           else f"'Noise Floor'!$N${match.group('row')}:$ADW${match.group('row')}"),
+            text,
+        )
+    return text.encode("utf-8")
+
+
 def _chart_capacity(package: zipfile.ZipFile) -> int:
     capacities = []
     for name in package.namelist():
@@ -330,6 +356,12 @@ def build_v14_report(template: Path, summaries: list[Path], output: Path, logger
         calc.attrib.update({"calcMode": "auto", "fullCalcOnLoad": "1", "forceFullCalc": "1"})
         header, rows = source["01_Metadata"]
         changes["xl/workbook.xml"], changes["xl/_rels/workbook.xml.rels"], changes["[Content_Types].xml"], changes["xl/worksheets/sheet12.xml"] = _add_metadata(workbook, rels, content_types, header, rows, workbook_source)
+        for chart_name in (name for name in original.namelist() if name.startswith("xl/charts/") and name.endswith(".xml")):
+            chart = original.read(chart_name)
+            for sheet in CURVE_CHART_SHEETS:
+                if f"'{sheet}'!" in chart.decode("utf-8", "ignore"):
+                    changes[chart_name] = _apply_chart_source_updates(chart, sheet)
+                    break
         if count > _chart_capacity(original):
             logger.warning("Chart display coverage is smaller than %d DUTs; charts are unchanged", count)
         with zipfile.ZipFile(temporary, "w", zipfile.ZIP_DEFLATED) as destination:
