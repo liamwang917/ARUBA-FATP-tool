@@ -72,9 +72,17 @@ def _serialize(root: ET.Element, original: bytes | None = None) -> bytes:
 
 
 def verify_template(template: Path, expected_sha256: str = TEMPLATE_SHA256) -> None:
+    if not template.is_file():
+        raise V14ReportError(
+            "Approved V14.5 template is missing. Place "
+            "Post-MIC limit_EV3_20260911.xlsx at templates/"
+        )
     digest = hashlib.sha256(template.read_bytes()).hexdigest()
     if digest != expected_sha256:
-        raise V14ReportError("Template SHA-256 does not match the approved V14 master")
+        raise V14ReportError(
+            "Approved V14.5 template hash is incorrect. Replace templates/"
+            "Post-MIC limit_EV3_20260911.xlsx with the approved master"
+        )
 
 
 def _column(index: int) -> str:

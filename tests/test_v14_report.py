@@ -10,7 +10,7 @@ from unittest.mock import patch
 from openpyxl import Workbook, load_workbook
 
 from src.config import SHEET_NAMES
-from src.v14_report import MAX_DUTS, V14ReportError, _apply_chart_source_updates, build_v14_report
+from src.v14_report import MAX_DUTS, V14ReportError, _apply_chart_source_updates, build_v14_report, verify_template
 from src import v14_main
 
 
@@ -220,11 +220,25 @@ class V144ReportTests(unittest.TestCase):
     def test_production_entrypoint_runs_v13_then_fixed_template_report(self):
         archive = self.root / "ARUBA_MIC.zip"
         summary = self.root / "summary_MIC_Online.xlsx"
-        with patch("src.v14_main.run_pipeline", return_value=[summary]) as pipeline, patch("src.v14_main.build_v14_report") as report:
+        with patch("src.v14_main.verify_template") as verify, patch("src.v14_main.run_pipeline", return_value=[summary]) as pipeline, patch("src.v14_main.build_v14_report") as report:
             self.assertEqual(v14_main.main([str(archive), "--output-dir", str(self.root)]), 0)
+        verify.assert_called_once_with(v14_main.DEFAULT_TEMPLATE)
         pipeline.assert_called_once()
         self.assertEqual(report.call_args.args[0], v14_main.DEFAULT_TEMPLATE)
         self.assertEqual(report.call_args.args[1], [summary])
         self.assertEqual(report.call_args.args[2], self.root / "report_MIC_Online.xlsx")
+
+    def test_rc_reports_missing_template_and_empty_selection_clearly(self):
+        with self.assertRaisesRegex(V14ReportError, "template is missing"):
+            verify_template(self.root / "missing.xlsx")
+        with patch("src.v14_main.choose_packages_gui", return_value=[]):
+            self.assertEqual(v14_main.main([]), 2)
+
+    def test_operational_launcher_uses_fixed_v145_workflow(self):
+        launcher = (Path(__file__).parents[1] / "tools" / "run_v14_report.bat").read_text(encoding="utf-8")
+        self.assertIn("V14.5 RC - Operational UAT", launcher)
+        self.assertIn("templates\\Post-MIC limit_EV3_20260911.xlsx", launcher)
+        self.assertIn("This UAT launcher accepts no arguments.", launcher)
+        self.assertNotIn("src.v14_main %*", launcher)
 
 if __name__ == "__main__": unittest.main()
