@@ -516,3 +516,67 @@ Implementation example for a DUT on row 40:
 - target series title reference: `'Frequency Response_1_3'!$A$40`
 
 Repeat for each DUT series row on the six curve charts.
+
+
+## 19. Pre-merge operational UAT gate
+
+Snapshot validation is necessary but not sufficient for merge.
+
+Before PR #4 can be considered merge-ready, the user must operate the actual Windows V14 tool end-to-end on real local archives.
+
+### Required production user flow
+
+Normal operation must be:
+
+```text
+double-click tools/run_v14_report.bat
+        ↓
+select ARUBA_MIC and/or ARUBA_PREMIC archive(s)
++ optional RawData_RD archive
+        ↓
+V13.6 normalization runs automatically
+        ↓
+approved local V14 template is found and SHA-256 verified automatically
+        ↓
+V14 report generation runs automatically
+        ↓
+summary_*.xlsx + report_*.xlsx are written
+```
+
+Normal users must not manually select:
+- V13.6 summary workbooks;
+- the V14 template on every run.
+
+### Local template requirement
+
+Because the real template is not committed to the public repository, the local production tool expects:
+
+`templates/Post-MIC limit_EV3_20260911.xlsx`
+
+The tool must:
+- check that the file exists;
+- verify the approved SHA-256;
+- stop with a clear user-facing error if it is missing or incorrect;
+- never silently bypass the check in normal production mode.
+
+Developer-only overrides may remain available through CLI flags but must not be part of the normal BAT workflow.
+
+### Operational acceptance checks
+
+User UAT must cover at least:
+- MIC only;
+- PREMIC only;
+- MIC + PREMIC together;
+- RawData present;
+- RawData absent;
+- at least ZIP and one additional supported archive format if practical;
+- correct automatic Online/Offline report discovery;
+- correct output filenames;
+- clear console/error messages;
+- no manual intermediate-summary/template selection;
+- generated reports open in Microsoft Excel without repair/recovery warnings;
+- formulas recalculate;
+- six curve legends show SN only;
+- Noise Floor chart has no logarithmic-axis popup.
+
+PR #4 must remain Draft and unmerged until the user explicitly confirms this operational UAT.
