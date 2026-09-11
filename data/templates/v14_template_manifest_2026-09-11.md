@@ -1,4 +1,4 @@
-# V14 report-template manifest — V14.3
+# V14 report-template manifest — V14.4
 
 This manifest describes the current user-supplied V14 master workbook. The binary workbook is intentionally not committed to this public repository.
 
@@ -58,3 +58,19 @@ This manifest describes the current user-supplied V14 master workbook. The binar
 Do not use this manifest as permission to regenerate the workbook from scratch. V14 must use the current master workbook as the copy source so all unlisted style, chart, print, relationship, and workbook metadata remain intact.
 
 A V14 output is invalid if Microsoft Excel reports that the file needs recovery/repair or is corrupt.
+
+
+## Workbook-integrity rules
+
+- Clear all legacy DUT data-region content before new population.
+- Frequency-axis mismatch is fatal; no interpolation/resampling/partial mapping.
+- Remove stale `xl/calcChain.xml` plus its relationship/content-type entry.
+- Set workbook recalculation flags: `calcMode=auto`, `fullCalcOnLoad=1`, `forceFullCalc=1`.
+- Do not round-trip the approved master through openpyxl or LibreOffice.
+- Protected chart/drawing/style/theme/printer-settings parts must remain byte-identical.
+- Column C mapping:
+  - FR_1_3 → `FR_File_Result`
+  - THD / Phase / Noise → item `Result`
+  - FR_1_12 / FR_original → `RawData_Match_Status`
+- Normalize report PASS/FAIL text to uppercase.
+- Known master issues (FR_1_3 D35/D36 sigma-reference anomaly and stale FilterDatabase) are preserved, not fixed.
