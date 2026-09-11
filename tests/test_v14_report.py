@@ -234,12 +234,24 @@ class V144ReportTests(unittest.TestCase):
         with patch("src.v14_main.choose_packages_gui", return_value=[]):
             self.assertEqual(v14_main.main([]), 2)
 
+    def test_default_output_folder_is_report(self):
+        archive = self.root / "ARUBA_MIC.zip"
+        summary = v14_main.DEFAULT_OUTPUT_DIR / "summary_MIC_Online.xlsx"
+        with patch("src.v14_main.verify_template"), patch("src.v14_main.run_pipeline", return_value=[summary]) as pipeline, patch("src.v14_main.build_v14_report"):
+            with patch.object(Path, "mkdir") as mkdir:
+                self.assertEqual(v14_main.main([str(archive)]), 0)
+        self.assertEqual(v14_main.DEFAULT_OUTPUT_DIR.name, "report")
+        self.assertEqual(pipeline.call_args.args[3], v14_main.DEFAULT_OUTPUT_DIR)
+        mkdir.assert_called()
+
     def test_operational_launcher_uses_fixed_v145_workflow(self):
         launcher = (Path(__file__).parents[1] / "tools" / "run_v14_report.bat").read_text(encoding="utf-8")
         self.assertIn("V14.5 RC - Operational UAT", launcher)
         self.assertIn("templates\\Post-MIC limit_20260911.xlsx", launcher)
         self.assertIn("Bundled template is missing", launcher)
         self.assertIn("The bundled clean template is used automatically.", launcher)
+        self.assertIn('if not exist "report" mkdir "report"', launcher)
+        self.assertIn("Generated Excel files are written to the report folder.", launcher)
         self.assertIn("This UAT launcher accepts no arguments.", launcher)
         self.assertNotIn("src.v14_main %*", launcher)
         self.assertNotIn("Post-MIC limit_EV3_20260911.xlsx", launcher)
