@@ -630,3 +630,25 @@ C while cells A40/B40 and later exist outside that declared range is invalid out
 and is treated as an Excel recovery-warning blocker.
 
 The regression test must cover this clean-template condition.
+
+
+## PREMIC Online scalar cell-order defect
+
+A second real Windows UAT failure was isolated in the generated `SNR` worksheet.
+
+The clean packaged template contains scalar rows where only the column-B cell exists
+(for example row 103 onward). When V14.5 wrote a new SN into column A, the previous
+writer appended the new A cell after the existing B cell, producing worksheet XML
+such as `B103, A103`.
+
+SpreadsheetML cell nodes inside a row must remain in ascending cell-reference order.
+The PREMIC Online population reaches these rows, while the three smaller UAT reports
+do not, explaining why only `report_PREMIC_Online.xlsx` triggered the Excel
+recovery warning after the prior dimension fix.
+
+Locked rule:
+
+- when creating a cell in an existing row, insert it before the first existing cell
+  with a larger column index;
+- every generated worksheet row must keep cell nodes in ascending column order;
+- regression coverage must include a B-only scalar template row populated with A+B.
