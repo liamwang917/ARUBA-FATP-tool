@@ -271,7 +271,7 @@ Required workbook-internal changes include:
 - remove the calcChain override from `[Content_Types].xml`;
 - set `calcMode="auto"`, `fullCalcOnLoad="1"`, and `forceFullCalc="1"` in workbook calculation properties;
 - add the `Metadata` worksheet relationship/content type correctly;
-- update worksheet `<dimension>` refs only when the actual written extent grows beyond the original bound. Preserve the original start cell and never shrink an existing max row/column merely because current DUT data are smaller.
+- update worksheet `<dimension>` refs whenever actual written cells extend beyond the original bound, including to earlier columns/rows. Preserve the original start cell unless a real write expands the used range left/up; never shrink an existing max row/column merely because current DUT data are smaller.
 
 For written text, shared-string bookkeeping must remain valid. Using inline strings for newly written cells is acceptable if Excel opens cleanly and the package remains valid.
 
@@ -616,3 +616,17 @@ The existing V14.5 writer continues to apply the previously validated runtime
 safeguards for the FR_1_3 10-sigma formula correction, SN-only DUT chart legends,
 Noise Floor >=100 Hz plotted source range, Metadata millisecond preservation and
 Excel recalculation handling.
+
+
+## PREMIC Online operational-UAT dimension defect
+
+Real Windows UAT found that the clean packaged master has `Phase` and `Noise Floor`
+worksheet dimensions starting at column C after legacy DUT data were removed
+(`C26:CE39` and `C26:ADW39`). V14.5 writes SN/Test_Time into columns A/B.
+
+A generated report must therefore expand the worksheet `<dimension>` start column
+to A whenever populated data are written into columns A/B. Leaving the dimension at
+C while cells A40/B40 and later exist outside that declared range is invalid output
+and is treated as an Excel recovery-warning blocker.
+
+The regression test must cover this clean-template condition.
