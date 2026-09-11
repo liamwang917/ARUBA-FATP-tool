@@ -1,5 +1,21 @@
 # Changelog
 
+## v14.0 — report-template analysis / preservation contract (2026-09-11)
+
+Started a new V14 draft line from the validated V13.6 `main` baseline.
+
+This revision is documentation/design only. No V13.6 parser behavior and no user Excel template formatting/formulas/charts are changed.
+
+Locked initial V14 decisions:
+
+- treat the supplied workbook as an immutable report master and populate a copy later;
+- preserve all worksheet names/order/visibility, formatting, merges, charts, conditional formatting, print settings, formulas and external-link relationships until explicitly approved otherwise;
+- record the exact 11-sheet / 8-chart template structure and SHA-256 manifest without committing the binary workbook to the public repository;
+- map V13.6 normalized FR/RawData/THD/Phase/Noise/SNR/Sensitivity outputs to the existing report sheets;
+- leave SNR/Sensitivity formula-vs-Main-Station semantics, hidden RawData column-C behavior, Metadata placement, row-capacity behavior, and legacy external-link treatment as explicit open items before implementation.
+
+See `docs/v14_report_template_spec_2026-09-11.md`.
+
 This file tracks the ARUBA FATP tool's version history. Filenames no longer embed version numbers; use this file plus git/PR history for version context.
 
 ## v13.6 — real-data feedback revision (2026-09-10)
