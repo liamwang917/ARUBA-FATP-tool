@@ -179,10 +179,13 @@ class V144ReportTests(unittest.TestCase):
             self.assertEqual(root.find(namespace + "dimension").attrib["ref"], "A4:CE383")
 
     def test_approved_chart_sources_use_sn_only_and_noise_starts_at_100hz(self):
-        curve = b"<c:chart><c:f>'THD'!$A$40:$C$40</c:f><c:f>'THD'!$D$40:$CE$40</c:f></c:chart>"
-        updated = _apply_chart_source_updates(curve, "THD")
-        self.assertIn(b"'THD'!$A$40</c:f>", updated)
-        self.assertIn(b"'THD'!$D$40:$CE$40", updated)
+        for sheet in ("Frequency Response_1_3", "Frequency Response_1_12", "Frequency Response_orignal", "THD", "Phase", "Noise Floor"):
+            reference = f"'{sheet}'" if " " in sheet else sheet
+            curve = f"<c:chart><c:f>{reference}!$A$40:$C$40</c:f><c:f>{reference}!$D$40:$CE$40</c:f></c:chart>".encode()
+            updated = _apply_chart_source_updates(curve, sheet)
+            self.assertIn(f"{reference}!$A$40</c:f>".encode(), updated)
+            self.assertNotIn(f"{reference}!$A$40:$C$40".encode(), updated)
+            self.assertIn(f"{reference}!$D$40:$CE$40".encode(), updated)
         noise = b"<c:chart><c:f>'Noise Floor'!$A$40:$C$40</c:f><c:f>'Noise Floor'!$D$39:$ADW$39</c:f><c:f>'Noise Floor'!$D$40:$ADW$40</c:f></c:chart>"
         updated = _apply_chart_source_updates(noise, "Noise Floor")
         self.assertIn(b"'Noise Floor'!$A$40</c:f>", updated)

@@ -280,13 +280,14 @@ def _apply_chart_source_updates(payload: bytes, sheet: str) -> bytes:
     """Apply the two explicitly approved V14.5 chart-source exceptions only."""
     text = payload.decode("utf-8")
     escaped = re.escape(sheet)
+    sheet_reference = rf"(?:'{escaped}'|{escaped})!"
 
     def sn_only(match: re.Match) -> str:
         row = int(match.group("row"))
-        return match.group(0) if row < 40 else f"'{sheet}'!$A${row}"
+        return match.group(0) if row < 40 else f"{match.group('sheet_ref')}$A${row}"
 
     text = re.sub(
-        rf"'{escaped}'!\$A\$(?P<row>\d+):\$C\$(?P=row)", sn_only, text,
+        rf"(?P<sheet_ref>{sheet_reference})\$A\$(?P<row>\d+):\$C\$(?P=row)", sn_only, text,
     )
     if sheet == "Noise Floor":
         text = re.sub(
@@ -359,7 +360,7 @@ def build_v14_report(template: Path, summaries: list[Path], output: Path, logger
         for chart_name in (name for name in original.namelist() if name.startswith("xl/charts/") and name.endswith(".xml")):
             chart = original.read(chart_name)
             for sheet in CURVE_CHART_SHEETS:
-                if f"'{sheet}'!" in chart.decode("utf-8", "ignore"):
+                if re.search(rf"(?:'{re.escape(sheet)}'|{re.escape(sheet)})!", chart.decode("utf-8", "ignore")):
                     changes[chart_name] = _apply_chart_source_updates(chart, sheet)
                     break
         if count > _chart_capacity(original):
