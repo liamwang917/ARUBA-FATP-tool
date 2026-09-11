@@ -337,3 +337,12 @@ V14 以使用者提供的 Excel report template 為 master，原則是 **不重�
 
 - `docs/v14_report_template_spec_2026-09-11.md`
 - `data/templates/v14_template_manifest_2026-09-11.md`
+
+
+## V14.5 template packaging
+
+The V14.5 report template is intended to be versioned with the tool at:
+
+`templates/Post-MIC limit_EV3_20260911.xlsx`
+
+Normal users do not select the template manually. The tool validates the packaged template identity automatically. For public-repository hygiene, use a sanitized release template with legacy DUT production values removed while preserving the report structure.
