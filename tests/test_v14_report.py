@@ -2,6 +2,7 @@ import logging
 import tempfile
 import unittest
 import zipfile
+from datetime import datetime
 from pathlib import Path
 from xml.etree import ElementTree as ET
 from unittest.mock import patch
@@ -26,15 +27,19 @@ CURVES = {
 }
 
 
-def make_summary(path, rows=1, axis=(100, 200), mismatch=False):
+def make_summary(path, rows=1, axis=(100, 200), mismatch=False, rawdata_missing=False):
     wb = Workbook(); wb.remove(wb.active)
     for name in SHEET_NAMES: wb.create_sheet(name)
     metadata = wb["01_Metadata"]
     metadata.append(["SN", "Test_Time", "synthetic_key"])
     for i in range(rows): metadata.append([f"SYNTH-{i:04d}", "2026-09-11", f"x{i}"])
     for source, (_, context) in CURVES.items():
-        ws = wb[source]; ws.append(["SN", "Test_Time", context, *axis])
-        for i in range(rows): ws.append([f"SYNTH-{i:04d}", "2026-09-11", "pass" if source != "04_FR_1_12" else "NOT_PROVIDED", -1.0, -2.0])
+        ws = wb[source]
+        raw_source = source in {"02_FR_original", "04_FR_1_12"}
+        ws.append(["SN", "Test_Time", context] if rawdata_missing and raw_source else ["SN", "Test_Time", context, *axis])
+        for i in range(rows):
+            values = [f"SYNTH-{i:04d}", "2026-09-11", "NOT_PROVIDED" if raw_source else "pass"]
+            ws.append(values if rawdata_missing and raw_source else values + [-1.0, -2.0])
     for source, value in (("08_SNR", "SNR_dB"), ("09_Sensitivity", "Sensitivity_dBFS")):
         ws = wb[source]; ws.append(["SN", "Test_Time", "Path_Result", "Result", value])
         for i in range(rows): ws.append([f"SYNTH-{i:04d}", "2026-09-11", "PASS", "FAIL", 31.5 if source == "08_SNR" else -31.5])
@@ -128,6 +133,23 @@ class V144ReportTests(unittest.TestCase):
     def test_frequency_mismatch_is_fatal(self):
         make_summary(self.summary, mismatch=True)
         with self.assertRaisesRegex(V14ReportError, "Frequency-axis mismatch"): self.build()
+        self.assertFalse(self.output.exists())
+
+    def test_rawdata_not_provided_leaves_raw_frequency_cells_blank(self):
+        make_summary(self.summary, rawdata_missing=True)
+        self.build()
+        for sheet in ("Frequency Response_1_12", "Frequency Response_orignal"):
+            self.assertEqual(load_workbook(self.output)[sheet]["C40"].value, "NOT_PROVIDED")
+            self.assertIsNone(load_workbook(self.output)[sheet]["D40"].value)
+
+    def test_test_time_is_compact_template_text_and_clear_does_not_expand_grid(self):
+        wb = load_workbook(self.summary)
+        wb["03_FR_1_3"]["B2"] = datetime(2026, 9, 11, 12, 34, 56)
+        wb.save(self.summary)
+        self.build()
+        self.assertEqual(load_workbook(self.output)["Frequency Response_1_3"]["B40"].value, "20260911123456")
+        with zipfile.ZipFile(self.output) as report:
+            self.assertNotIn(b'r="986"', report.read("xl/worksheets/sheet4.xml"))
 
     def test_capacity_and_chart_warning(self):
         make_summary(self.summary, rows=MAX_DUTS)

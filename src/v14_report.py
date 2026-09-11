@@ -5,9 +5,12 @@ from __future__ import annotations
 import hashlib
 import io
 import logging
+import os
 import re
 import shutil
+import tempfile
 import zipfile
+from datetime import datetime
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -131,6 +134,8 @@ def _cell(row: ET.Element, column: int, value: object) -> None:
     if value is None or value == "":
         cell.attrib.pop("t", None)
         return
+    if isinstance(value, datetime):
+        value = value.strftime("%Y%m%d%H%M%S")
     if isinstance(value, bool):
         value = int(value)
     if isinstance(value, (int, float)):
@@ -161,18 +166,39 @@ def _ensure_row(root: ET.Element, number: int) -> ET.Element:
     return row
 
 
+def _clear_existing(root: ET.Element, first_column: int, last_column: int, end_row: int) -> None:
+    """Clear legacy values only; never manufacture a full-capacity blank grid."""
+    data = root.find(f"{{{NS}}}sheetData")
+    for row in data.findall(f"{{{NS}}}row"):
+        if not 40 <= int(row.attrib.get("r", "0")) <= end_row:
+            continue
+        for cell in row.findall(f"{{{NS}}}c"):
+            column = _xml_column(cell.attrib["r"])
+            if first_column <= column <= last_column:
+                for child in list(cell):
+                    cell.remove(child)
+                cell.attrib.pop("t", None)
+
+
+def _dimension_last_row(root: ET.Element) -> int:
+    ref = root.find(f"{{{NS}}}dimension").attrib.get("ref", "A1")
+    match = re.search(r"(\d+)$", ref)
+    return int(match.group(1)) if match else 1
+
+
 def _clear_and_write_curve(xml: bytes, header: list[object], rows: list[dict[str, object]], context: str, end_row: int) -> bytes:
     root = _xml(xml)
     data = root.find(f"{{{NS}}}sheetData")
     template_axis = _row_cells(next(row for row in data.findall(f"{{{NS}}}row") if row.attrib.get("r") == "39"))
     source_axis = header[header.index(context) + 1:]
     destination_axis = [template_axis[column] for column in sorted(template_axis) if column >= 4]
-    if [_normal(x) for x in source_axis] != [_normal(x) for x in destination_axis]:
+    is_rawdata = context == "RawData_Match_Status"
+    no_rawdata_curve = not source_axis and is_rawdata and all(
+        row.get(context) in {"NOT_PROVIDED", "UNMATCHED", "AMBIGUOUS", ""} for row in rows
+    )
+    if not no_rawdata_curve and [_normal(x) for x in source_axis] != [_normal(x) for x in destination_axis]:
         raise V14ReportError(f"Frequency-axis mismatch for {context}")
-    for number in range(40, end_row + 1):
-        row = _ensure_row(root, number)
-        for column in range(1, len(destination_axis) + 4):
-            _cell(row, column, None)
+    _clear_existing(root, 1, len(destination_axis) + 3, end_row)
     for offset, source in enumerate(rows):
         row = _ensure_row(root, 40 + offset)
         _cell(row, 1, source.get("SN"))
@@ -180,19 +206,18 @@ def _clear_and_write_curve(xml: bytes, header: list[object], rows: list[dict[str
         _cell(row, 3, source.get(context))
         for index, frequency in enumerate(source_axis, 4):
             _cell(row, index, source.get(frequency))
-    root.find(f"{{{NS}}}dimension").attrib["ref"] = f"A1:{_column(len(destination_axis) + 3)}{max(end_row, 39 + len(rows))}"
+    last_row = max(_dimension_last_row(root), 39 + len(rows))
+    root.find(f"{{{NS}}}dimension").attrib["ref"] = f"A1:{_column(len(destination_axis) + 3)}{last_row}"
     return _serialize(root, xml)
 
 
 def _clear_and_write_scalar(xml: bytes, rows: list[dict[str, object]], value_key: str, end_row: int) -> bytes:
     root = _xml(xml)
-    for number in range(40, end_row + 1):
-        row = _ensure_row(root, number)
-        _cell(row, 1, None); _cell(row, 2, None)
+    _clear_existing(root, 1, 2, end_row)
     for offset, source in enumerate(rows):
         row = _ensure_row(root, 40 + offset)
         _cell(row, 1, source.get("SN")); _cell(row, 2, source.get(value_key))
-    root.find(f"{{{NS}}}dimension").attrib["ref"] = f"A1:B{max(end_row, 39 + len(rows))}"
+    root.find(f"{{{NS}}}dimension").attrib["ref"] = f"A1:B{max(_dimension_last_row(root), 39 + len(rows))}"
     return _serialize(root, xml)
 
 
@@ -246,8 +271,14 @@ def build_v14_report(template: Path, summaries: list[Path], output: Path, logger
     count = len(source["01_Metadata"][1])
     if count > MAX_DUTS:
         raise V14ReportError(f"V14 report has {count} DUTs; maximum is {MAX_DUTS}")
-    shutil.copyfile(template, output)
-    with zipfile.ZipFile(template) as original:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    handle, temporary_name = tempfile.mkstemp(prefix=f".{output.stem}.", suffix=".xlsx", dir=output.parent)
+    os.close(handle)
+    Path(temporary_name).unlink(missing_ok=True)
+    temporary = Path(temporary_name)
+    try:
+      shutil.copyfile(template, temporary)
+      with zipfile.ZipFile(template) as original:
         if any(name.startswith("xl/externalLinks/") for name in original.namelist()):
             raise V14ReportError("Approved master must not contain external workbook links")
         workbook_source = original.read("xl/workbook.xml")
@@ -271,7 +302,7 @@ def build_v14_report(template: Path, summaries: list[Path], output: Path, logger
         changes["xl/workbook.xml"], changes["xl/_rels/workbook.xml.rels"], changes["[Content_Types].xml"], changes["xl/worksheets/sheet12.xml"] = _add_metadata(workbook, rels, content_types, header, rows, workbook_source)
         if count > _chart_capacity(original):
             logger.warning("Chart display coverage is smaller than %d DUTs; charts are unchanged", count)
-        with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as destination:
+        with zipfile.ZipFile(temporary, "w", zipfile.ZIP_DEFLATED) as destination:
             for item in original.infolist():
                 if item.filename in {"xl/calcChain.xml"}:
                     continue
@@ -290,4 +321,7 @@ def build_v14_report(template: Path, summaries: list[Path], output: Path, logger
                     payload = ET.tostring(types, encoding="utf-8", xml_declaration=True)
                 destination.writestr(item, payload)
             destination.writestr("xl/worksheets/sheet12.xml", changes["xl/worksheets/sheet12.xml"])
-    return output
+      temporary.replace(output)
+      return output
+    finally:
+      temporary.unlink(missing_ok=True)
