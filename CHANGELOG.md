@@ -1,5 +1,21 @@
 # Changelog
 
+## v14.2 — replacement EV3 master and locked template rules (2026-09-11)
+
+Replaced the V14 design reference with `Post-MIC limit_EV3_20260911.xlsx` and confirmed the legacy external workbook link is removed.
+
+Locked V14.2 decisions:
+
+- SNR and Sensitivity use V13.6 Main Station values directly;
+- `Frequency Response_1_12` and `Frequency Response_orignal` are visible in generated reports;
+- RawData sheet column C = `RawData_Match_Status`;
+- append a new `Metadata` sheet after `Sensitivity`, following V13.6 `01_Metadata`;
+- fixed-capacity policy: stop/warn on overflow, never silently truncate, and do not auto-extend formulas/charts;
+- generated reports must contain no external workbook links;
+- generated XLSX must open in Microsoft Excel without repair/recovery/corruption warning.
+
+Template identity: SHA-256 `93af9584fa442b70c8d056921d33135db82656e772f9c84019adc46010c4eb7e`.
+
 ## v14.0 — report-template analysis / preservation contract (2026-09-11)
 
 Started a new V14 draft line from the validated V13.6 `main` baseline.
