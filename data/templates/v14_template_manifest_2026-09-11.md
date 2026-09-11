@@ -1,4 +1,4 @@
-# V14 report-template manifest — V14.4
+# V14 report-template manifest — V14.5
 
 This manifest describes the current user-supplied V14 master workbook. The binary workbook is intentionally not committed to this public repository.
 
@@ -73,4 +73,7 @@ A V14 output is invalid if Microsoft Excel reports that the file needs recovery/
   - THD / Phase / Noise → item `Result`
   - FR_1_12 / FR_original → `RawData_Match_Status`
 - Normalize report PASS/FAIL text to uppercase.
-- Known master issues (FR_1_3 D35/D36 sigma-reference anomaly and stale FilterDatabase) are preserved, not fixed.
+- Approved formula correction: `Frequency Response_1_3!D35 = D28+D32` and `D36 = D28-D32`.
+- Preserve Metadata `test_start_time` / `test_end_time` to millisecond precision.
+- Preserve original worksheet `<dimension>` bounds unless actual written data require expansion; never shrink them or reset the start cell unnecessarily.
+- The stale FilterDatabase remains a known master issue and is preserved.
