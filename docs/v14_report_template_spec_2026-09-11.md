@@ -484,3 +484,35 @@ Acceptance:
 - Microsoft Excel opens without the logarithmic-axis popup;
 - Noise data/statistics remain unchanged;
 - chart appearance remains otherwise unchanged.
+
+
+## 18. DUT chart legend — SN only
+
+User-approved chart-label cleanup for the six curve charts:
+
+- `Frequency Response_1_3`
+- `Frequency Response_1_12`
+- `Frequency Response_orignal`
+- `THD`
+- `Phase`
+- `Noise Floor`
+
+Current DUT series titles reference columns A:C for each DUT row, which makes Microsoft Excel display concatenated legend text such as:
+
+`SN Test_Time PASS/FAIL`
+
+Approved behavior:
+
+- every DUT series legend label must display **SN only**;
+- use the row's column-A SN cell as the series title source;
+- do not include Test_Time or PASS/FAIL/RawData status in the legend;
+- do not alter the plotted X/Y values, series count, line/marker formatting, chart size/position, axes, or non-DUT limit/statistics series;
+- apply this only to DUT-series titles;
+- SNR and Sensitivity charts keep their existing metric/limit legend labels because they are not per-DUT curve legends.
+
+Implementation example for a DUT on row 40:
+
+- current series title reference: `'Frequency Response_1_3'!$A$40:$C$40`
+- target series title reference: `'Frequency Response_1_3'!$A$40`
+
+Repeat for each DUT series row on the six curve charts.
