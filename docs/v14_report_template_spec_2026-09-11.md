@@ -36,8 +36,8 @@ Implementation must work on a **copy** of the template. The original template is
 
 Approved exceptions in V14.4:
 
-1. `Frequency Response_1_12` changes from hidden to visible.
-2. `Frequency Response_orignal` changes from hidden to visible.
+1. `Frequency Response_1_12` is visible in the clean packaged master and remains visible.
+2. `Frequency Response_orignal` is visible in the clean packaged master and remains visible.
 3. A new `Metadata` worksheet is appended after `Sensitivity`.
 4. SNR data rows use V13.6 Main Station SNR values instead of the template's legacy calculated SNR formula.
 5. Sensitivity data rows use V13.6 Main Station Sensitivity values instead of the template's legacy FR-at-1k formula.
@@ -55,7 +55,7 @@ No other layout/style/formula/chart changes are approved.
 - SHA-256: `a556aa066b9412fb17512bb4f992d26909676c5bc53a138616e2cebef2925724`
 - Original worksheets: 11
 - Original charts: 8
-- Original hidden worksheets: 2
+- Original hidden worksheets: 0
 - External workbook links: **0 (confirmed removed in the new master template)**
 
 The user-approved clean V14.5 template is versioned in this repository at `templates/Post-MIC limit_20260911.xlsx`. Legacy DUT / RawData production values have been removed. Its SHA-256 `a556aa066b9412fb17512bb4f992d26909676c5bc53a138616e2cebef2925724` is the packaged production template identity.
@@ -68,8 +68,8 @@ The user-approved clean V14.5 template is versioned in this repository at `templ
 2. `Audio Limit for EV3` — visible
 3. `Audio Limit_Sigma` — visible
 4. `Frequency Response_1_3` — visible
-5. `Frequency Response_1_12` — hidden
-6. `Frequency Response_orignal` — hidden
+5. `Frequency Response_1_12` — visible
+6. `Frequency Response_orignal` — visible
 7. `THD` — visible
 8. `Phase` — visible
 9. `Noise Floor` — visible
@@ -417,7 +417,7 @@ select ARUBA_MIC / ARUBA_PREMIC archive(s)
         ↓
 V13.6 parsing / matching / normalized data generation
         ↓
-V14 automatically loads the approved local report-template master
+V14 automatically loads the approved packaged report-template master
         ↓
 V14 populates the report template
         ↓
@@ -547,7 +547,7 @@ Normal users must not manually select:
 
 ### Local template requirement
 
-Because the real template is not committed to the public repository, the local production tool expects:
+The clean template is intended to be versioned with the repository/tool at:
 
 `templates/Post-MIC limit_20260911.xlsx`
 
