@@ -156,3 +156,16 @@ Keep Noise worksheet data/statistics at 0–7990 Hz. Keep chart type/style/posit
 For the six curve charts (FR_1_3, FR_1_12, FR_original, THD, Phase, Noise Floor), each DUT series title must reference only its SN cell in column A. Do not include Test_Time or Result/status in the legend.
 
 Do not alter plotted data, chart formatting, axes, positions, or non-DUT limit/statistics series. SNR and Sensitivity chart labels remain unchanged.
+
+
+## Pre-merge V14 operational UAT
+
+Snapshot validation does not authorize merge.
+
+Before V14 can merge to main, deliver the actual Windows end-to-end tool for user operation. Normal workflow is double-click BAT -> select MIC/PREMIC archive(s) + optional RawData -> V13.6 normalization -> automatic fixed-template SHA verification -> final V14 report(s).
+
+Do not require normal users to select intermediate V13.6 summaries or browse for the template each run.
+
+The local real template stays outside the public repository at `templates/Post-MIC limit_EV3_20260911.xlsx`. Missing/wrong template must fail clearly.
+
+Keep PR #4 Draft until the user explicitly confirms real operational UAT.
