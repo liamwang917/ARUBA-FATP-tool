@@ -114,3 +114,20 @@ Do not alter worksheet names/order/visibility, formatting, row heights, column w
 V14 implementation must eventually populate a copy of the approved template and write only to approved data regions. Do not regenerate the workbook from scratch.
 
 The binary template is not committed to this public repository at this stage. Use the manifest/hash in `data/templates/v14_template_manifest_2026-09-11.md` to identify the analyzed workbook.
+
+
+## V14.4 Workbook Integrity Rules
+
+For the approved V14 report master:
+
+- clear legacy DUT data-region contents before writing new DUT data;
+- frequency-axis mismatch is fatal; never resample/interpolate/shift/partially map;
+- use column C mapping from the V14 spec exactly;
+- global statistical capacity is 947 DUTs; chart coverage is separate and must not truncate statistics;
+- remove stale calcChain and request full recalculation on Excel open;
+- do not use openpyxl or LibreOffice load/save round-trip to populate the approved master;
+- preserve protected OOXML chart/drawing/style/theme/printer parts byte-for-byte;
+- do not repair unrelated pre-existing template defects;
+- treat any Excel repair/recovery/corrupt warning as a failed output.
+
+Do not merge V14 to main unless the user explicitly approves it.
