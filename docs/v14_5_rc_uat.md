@@ -19,8 +19,7 @@ For operational UAT, launch the Windows BAT tool, select `ARUBA_MIC` and/or
 `ARUBA_PREMIC` archives, and optionally select `RawData_RD`. V13.6 normalization
 and V14.5 report generation must run end-to-end in the same operation.
 
-Expected outputs are the discovered `summary_*.xlsx` and matching
-`report_*.xlsx` files.
+Expected outputs are written under the repository/tool `report/` folder:\n\n- discovered `summary_*.xlsx`;\n- matching `report_*.xlsx`.\n\nThe launcher creates `report/` automatically if it does not already exist.
 
 Acceptance checks include:
 
