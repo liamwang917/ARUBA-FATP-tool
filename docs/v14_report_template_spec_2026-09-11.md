@@ -8,7 +8,7 @@ V13.6 on `main` remains the validated production data-normalization pipeline.
 
 V14 is a **report-template integration phase** based on:
 
-`Post-MIC limit_EV3_20260911.xlsx`
+`Post-MIC limit_20260911.xlsx`
 
 The V14 branch is:
 
@@ -50,15 +50,15 @@ No other layout/style/formula/chart changes are approved.
 
 ## 2. Template identity
 
-- Filename: `Post-MIC limit_EV3_20260911.xlsx`
-- Size: 5,421,221 bytes
-- SHA-256: `93af9584fa442b70c8d056921d33135db82656e772f9c84019adc46010c4eb7e`
+- Filename: `Post-MIC limit_20260911.xlsx`
+- Size: 859,035 bytes
+- SHA-256: `a556aa066b9412fb17512bb4f992d26909676c5bc53a138616e2cebef2925724`
 - Original worksheets: 11
 - Original charts: 8
 - Original hidden worksheets: 2
 - External workbook links: **0 (confirmed removed in the new master template)**
 
-The approved V14 template binary may be committed to this repository because the user has confirmed the template itself is not confidential. For release packaging, prefer a sanitized template copy with all legacy DUT production rows removed while preserving formulas, charts, styles, and layout. The committed template becomes the packaged production master and its SHA-256 becomes the release template identity.
+The user-approved clean V14.5 template is versioned in this repository at `templates/Post-MIC limit_20260911.xlsx`. Legacy DUT / RawData production values have been removed. Its SHA-256 `a556aa066b9412fb17512bb4f992d26909676c5bc53a138616e2cebef2925724` is the packaged production template identity.
 
 ## 3. Worksheet contract
 
@@ -324,7 +324,7 @@ Do not use the raw chart `<c:ser>` count as a DUT-capacity number because charts
 
 ## 11. External-link status
 
-The replacement master template `Post-MIC limit_EV3_20260911.xlsx` has been verified to contain **no `xl/externalLinks/` relationship**.
+The replacement master template `Post-MIC limit_20260911.xlsx` has been verified to contain **no `xl/externalLinks/` relationship**.
 
 V14 rule:
 
@@ -335,7 +335,7 @@ V14 rule:
 
 Before any V14 report generator is considered ready:
 
-- generated report is based on a copy of `Post-MIC limit_EV3_20260911.xlsx`;
+- generated report is based on a copy of `Post-MIC limit_20260911.xlsx`;
 - all original sheet names/order remain unchanged, with only the approved appended `Metadata` sheet;
 - `Frequency Response_1_12` and `Frequency Response_orignal` are visible;
 - the approved Metadata sheet is present;
@@ -432,7 +432,7 @@ V13.6 summary workbooks may still be generated/retained as debug or regression a
 
 The approved V14 template should be committed in the repository under a fixed path and bundled with the release, for example:
 
-`templates/Post-MIC limit_EV3_20260911.xlsx`
+`templates/Post-MIC limit_20260911.xlsx`
 
 Prefer committing a sanitized master with legacy DUT rows removed. Normal users do not browse for this file on each run, and a packaged EXE must embed or install this template automatically.
 
@@ -549,7 +549,7 @@ Normal users must not manually select:
 
 Because the real template is not committed to the public repository, the local production tool expects:
 
-`templates/Post-MIC limit_EV3_20260911.xlsx`
+`templates/Post-MIC limit_20260911.xlsx`
 
 The tool must:
 - check that the file exists;
@@ -586,8 +586,8 @@ The user has approved storing the V14 template in GitHub so the production tool/
 
 Release policy:
 
-- commit one approved template binary at `templates/Post-MIC limit_EV3_20260911.xlsx`;
-- preferably sanitize legacy DUT production values before commit while preserving the exact report structure, formulas, chart objects, styles, print settings, and approved V14.5 corrections;
+- version the approved clean template binary at `templates/Post-MIC limit_20260911.xlsx`;
+- legacy DUT / RawData production values are removed while the report structure, formulas, chart objects, styles and print settings remain the master contract;
 - update `TEMPLATE_SHA256` and the manifest to the committed release-template SHA-256;
 - the normal tool uses this repository-packaged template automatically;
 - no template file picker in normal operation;
@@ -595,3 +595,24 @@ Release policy:
 - developer template override may remain available only as an explicit CLI option.
 
 The template binary and its release SHA-256 become part of the versioned application contract.
+
+
+### Clean packaged master — final identity
+
+The final V14.5 operational-UAT master supplied on 2026-09-11 is:
+
+- `Post-MIC limit_20260911.xlsx`
+- size: 859,035 bytes
+- SHA-256: `a556aa066b9412fb17512bb4f992d26909676c5bc53a138616e2cebef2925724`
+- 11 original worksheets
+- 8 charts
+- 0 hidden worksheets
+- 0 external workbook links
+- legacy production DUT / RawData row values removed
+- `Frequency Response_1_12` visible
+- `Frequency Response_orignal` visible
+
+The existing V14.5 writer continues to apply the previously validated runtime
+safeguards for the FR_1_3 10-sigma formula correction, SN-only DUT chart legends,
+Noise Floor >=100 Hz plotted source range, Metadata millisecond preservation and
+Excel recalculation handling.
