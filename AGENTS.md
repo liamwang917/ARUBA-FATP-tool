@@ -142,3 +142,10 @@ V14 is integrated into the V13.6 run. Normal users select only the FATP archive 
 The production delivery package must locate its approved local template automatically from a fixed packaged/configured location, validate its identity, then produce the final V14 report(s) in the same run.
 
 Intermediate V13.6 summaries may remain available for debug/regression, but they are not a required manual input step.
+
+
+## Noise Floor chart log-axis fix
+
+The only approved chart-content change in V14.5 is to remove 0–90 Hz from the plotted Noise Floor chart series because the X axis is logarithmic and starts visually at 100 Hz.
+
+Keep Noise worksheet data/statistics at 0–7990 Hz. Keep chart type/style/position/axes/formatting unchanged. Update only Noise chart X/Y source ranges to start at 100 Hz (column N in the approved master). Do not modify the other seven charts.
