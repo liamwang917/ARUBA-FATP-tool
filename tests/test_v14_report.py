@@ -4,11 +4,13 @@ import unittest
 import zipfile
 from pathlib import Path
 from xml.etree import ElementTree as ET
+from unittest.mock import patch
 
 from openpyxl import Workbook, load_workbook
 
 from src.config import SHEET_NAMES
 from src.v14_report import MAX_DUTS, V14ReportError, build_v14_report
+from src import v14_main
 
 
 TARGETS = [
@@ -66,6 +68,20 @@ def make_template(path, axis=(100, 200), chart_capacity=1):
         package.writestr("[Content_Types].xml", ET.tostring(types, encoding="utf-8", xml_declaration=True))
 
 
+def add_excel_compatibility_namespaces(path):
+    """Add real-master-like compatibility prefixes without using the V14 writer."""
+    namespaces = ' xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:x15="http://schemas.microsoft.com/office/spreadsheetml/2010/11/main" xmlns:xr="http://schemas.microsoft.com/office/spreadsheetml/2014/revision"'
+    with zipfile.ZipFile(path, "a", zipfile.ZIP_DEFLATED) as package:
+        for name, ignorable, extension in (
+            ("xl/workbook.xml", "x15 xr", '<extLst><ext uri="{synthetic}"><x15:future xr:uid="synthetic"/></ext></extLst>'),
+            ("xl/worksheets/sheet4.xml", "x15 xr", '<extLst><ext uri="{synthetic}"><xr:revision/></ext></extLst>'),
+        ):
+            xml = package.read(name).decode("utf-8")
+            xml = xml.replace("<workbook", f'<workbook{namespaces} mc:Ignorable="{ignorable}"', 1) if name.endswith("workbook.xml") else xml.replace("<worksheet", f'<worksheet{namespaces} mc:Ignorable="{ignorable}"', 1)
+            xml = xml.replace("</workbook>" if name.endswith("workbook.xml") else "</worksheet>", extension + ("</workbook>" if name.endswith("workbook.xml") else "</worksheet>"))
+            package.writestr(name, xml)
+
+
 class V144ReportTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(); self.root = Path(self.temp.name)
@@ -97,6 +113,18 @@ class V144ReportTests(unittest.TestCase):
             workbook = after.read("xl/workbook.xml").decode()
             self.assertIn('fullCalcOnLoad="1"', workbook); self.assertIn('forceFullCalc="1"', workbook)
 
+    def test_compatibility_prefixes_and_existing_calcpr_survive(self):
+        add_excel_compatibility_namespaces(self.template)
+        self.build()
+        with zipfile.ZipFile(self.output) as report:
+            for name in ("xl/workbook.xml", "xl/worksheets/sheet4.xml"):
+                xml = report.read(name).decode("utf-8")
+                ignorable = __import__("re").search(r'Ignorable="([^"]+)"', xml).group(1).split()
+                declared = set(__import__("re").findall(r'xmlns:([^=]+)=', xml))
+                self.assertTrue(set(ignorable).issubset(declared), name)
+            workbook = report.read("xl/workbook.xml").decode("utf-8")
+            self.assertEqual(workbook.count("calcPr"), 1)
+
     def test_frequency_mismatch_is_fatal(self):
         make_summary(self.summary, mismatch=True)
         with self.assertRaisesRegex(V14ReportError, "Frequency-axis mismatch"): self.build()
@@ -113,5 +141,15 @@ class V144ReportTests(unittest.TestCase):
         second = self.root / "summary2.xlsx"; make_summary(second)
         build_v14_report(self.template, [self.summary, second], self.output, verify_hash=False)
         self.assertEqual(load_workbook(self.output)["Metadata"].max_row, 3)
+
+    def test_production_entrypoint_runs_v13_then_fixed_template_report(self):
+        archive = self.root / "ARUBA_MIC.zip"
+        summary = self.root / "summary_MIC_Online.xlsx"
+        with patch("src.v14_main.run_pipeline", return_value=[summary]) as pipeline, patch("src.v14_main.build_v14_report") as report:
+            self.assertEqual(v14_main.main([str(archive), "--output-dir", str(self.root)]), 0)
+        pipeline.assert_called_once()
+        self.assertEqual(report.call_args.args[0], v14_main.DEFAULT_TEMPLATE)
+        self.assertEqual(report.call_args.args[1], [summary])
+        self.assertEqual(report.call_args.args[2], self.root / "report_MIC_Online.xlsx")
 
 if __name__ == "__main__": unittest.main()

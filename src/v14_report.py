@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import logging
 import re
 import shutil
@@ -35,6 +36,32 @@ SCALARS = {"08_SNR": ("SNR", "SNR_dB", 989), "09_Sensitivity": ("Sensitivity", "
 
 class V14ReportError(ValueError):
     pass
+
+
+def _xml(payload: bytes) -> ET.Element:
+    """Parse after registering every namespace used by the source OOXML part.
+
+    Excel's mc:Ignorable values refer to literal prefixes.  Registering the
+    original bindings before serialization keeps those prefix references valid.
+    """
+    for _, (prefix, uri) in ET.iterparse(io.BytesIO(payload), events=("start-ns",)):
+        if prefix not in {"xml", "xmlns"} and not re.fullmatch(r"ns\d+", prefix):
+            ET.register_namespace(prefix, uri)
+    return ET.fromstring(payload)
+
+
+def _serialize(root: ET.Element, original: bytes | None = None) -> bytes:
+    """Serialize while retaining root-level namespace declarations verbatim."""
+    payload = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+    if not original:
+        return payload
+    original_tag = re.search(rb"<[^!?][^>]*>", original).group(0)
+    declarations = re.findall(rb"\s(xmlns(?::[^=\s]+)?=\"[^\"]+\")", original_tag)
+    generated_tag = re.search(rb"<[^!?][^>]*>", payload).group(0)
+    additions = [item for item in declarations if item not in generated_tag]
+    if additions:
+        payload = payload.replace(generated_tag, generated_tag[:-1] + b" " + b" ".join(additions) + b">", 1)
+    return payload
 
 
 def verify_template(template: Path, expected_sha256: str = TEMPLATE_SHA256) -> None:
@@ -116,8 +143,8 @@ def _cell(row: ET.Element, column: int, value: object) -> None:
 
 
 def _sheet_path(package: zipfile.ZipFile) -> tuple[ET.Element, ET.Element, dict[str, str]]:
-    workbook = ET.fromstring(package.read("xl/workbook.xml"))
-    rels = ET.fromstring(package.read("xl/_rels/workbook.xml.rels"))
+    workbook = _xml(package.read("xl/workbook.xml"))
+    rels = _xml(package.read("xl/_rels/workbook.xml.rels"))
     targets = {rel.attrib["Id"]: rel.attrib["Target"].lstrip("/") for rel in rels}
     paths = {}
     for sheet in workbook.findall(f".//{{{NS}}}sheet"):
@@ -135,7 +162,7 @@ def _ensure_row(root: ET.Element, number: int) -> ET.Element:
 
 
 def _clear_and_write_curve(xml: bytes, header: list[object], rows: list[dict[str, object]], context: str, end_row: int) -> bytes:
-    root = ET.fromstring(xml)
+    root = _xml(xml)
     data = root.find(f"{{{NS}}}sheetData")
     template_axis = _row_cells(next(row for row in data.findall(f"{{{NS}}}row") if row.attrib.get("r") == "39"))
     source_axis = header[header.index(context) + 1:]
@@ -154,11 +181,11 @@ def _clear_and_write_curve(xml: bytes, header: list[object], rows: list[dict[str
         for index, frequency in enumerate(source_axis, 4):
             _cell(row, index, source.get(frequency))
     root.find(f"{{{NS}}}dimension").attrib["ref"] = f"A1:{_column(len(destination_axis) + 3)}{max(end_row, 39 + len(rows))}"
-    return ET.tostring(root, encoding="utf-8", xml_declaration=True)
+    return _serialize(root, xml)
 
 
 def _clear_and_write_scalar(xml: bytes, rows: list[dict[str, object]], value_key: str, end_row: int) -> bytes:
-    root = ET.fromstring(xml)
+    root = _xml(xml)
     for number in range(40, end_row + 1):
         row = _ensure_row(root, number)
         _cell(row, 1, None); _cell(row, 2, None)
@@ -166,7 +193,7 @@ def _clear_and_write_scalar(xml: bytes, rows: list[dict[str, object]], value_key
         row = _ensure_row(root, 40 + offset)
         _cell(row, 1, source.get("SN")); _cell(row, 2, source.get(value_key))
     root.find(f"{{{NS}}}dimension").attrib["ref"] = f"A1:B{max(end_row, 39 + len(rows))}"
-    return ET.tostring(root, encoding="utf-8", xml_declaration=True)
+    return _serialize(root, xml)
 
 
 def _metadata_xml(header: list[object], rows: list[dict[str, object]]) -> bytes:
@@ -180,7 +207,7 @@ def _metadata_xml(header: list[object], rows: list[dict[str, object]]) -> bytes:
     return ET.tostring(root, encoding="utf-8", xml_declaration=True)
 
 
-def _add_metadata(workbook, rels, content_types, header, rows) -> tuple[bytes, bytes, bytes, bytes]:
+def _add_metadata(workbook, rels, content_types, header, rows, workbook_source: bytes) -> tuple[bytes, bytes, bytes, bytes]:
     sheets = workbook.find(f"{{{NS}}}sheets")
     ids = [int(sheet.attrib["sheetId"]) for sheet in sheets]
     existing = [int(re.search(r"rId(\d+)", rel.attrib["Id"]).group(1)) for rel in rels if re.fullmatch(r"rId\d+", rel.attrib["Id"])]
@@ -188,15 +215,18 @@ def _add_metadata(workbook, rels, content_types, header, rows) -> tuple[bytes, b
     sheet = ET.SubElement(sheets, f"{{{NS}}}sheet", {"name": "Metadata", "sheetId": str(max(ids) + 1), f"{{{REL_NS}}}id": rid})
     ET.SubElement(rels, f"{{{PKG_REL_NS}}}Relationship", {"Id": rid, "Type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet", "Target": "worksheets/sheet12.xml"})
     ET.SubElement(content_types, f"{{{CT_NS}}}Override", {"PartName": "/xl/worksheets/sheet12.xml", "ContentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"})
-    return (ET.tostring(workbook, encoding="utf-8", xml_declaration=True), ET.tostring(rels, encoding="utf-8", xml_declaration=True), ET.tostring(content_types, encoding="utf-8", xml_declaration=True), _metadata_xml(header, rows))
+    return (_serialize(workbook, workbook_source), ET.tostring(rels, encoding="utf-8", xml_declaration=True), ET.tostring(content_types, encoding="utf-8", xml_declaration=True), _metadata_xml(header, rows))
 
 
 def _chart_capacity(package: zipfile.ZipFile) -> int:
-    numbers = []
+    capacities = []
     for name in package.namelist():
         if name.startswith("xl/charts/") and name.endswith(".xml"):
-            numbers.extend(int(x) for x in re.findall(r"\$(?:[A-Z]+)\$(\d+)", package.read(name).decode("utf-8", "ignore")))
-    return max((number - 39 for number in numbers if number >= 40), default=MAX_DUTS)
+            numbers = [int(x) for x in re.findall(r"\$(?:[A-Z]+)\$(\d+)", package.read(name).decode("utf-8", "ignore"))]
+            coverage = max((number - 39 for number in numbers if number >= 40), default=None)
+            if coverage is not None:
+                capacities.append(coverage)
+    return min(capacities, default=MAX_DUTS)
 
 
 def build_v14_report(template: Path, summaries: list[Path], output: Path, logger: logging.Logger | None = None, *, verify_hash: bool = True) -> Path:
@@ -220,8 +250,9 @@ def build_v14_report(template: Path, summaries: list[Path], output: Path, logger
     with zipfile.ZipFile(template) as original:
         if any(name.startswith("xl/externalLinks/") for name in original.namelist()):
             raise V14ReportError("Approved master must not contain external workbook links")
+        workbook_source = original.read("xl/workbook.xml")
         workbook, rels, paths = _sheet_path(original)
-        content_types = ET.fromstring(original.read("[Content_Types].xml"))
+        content_types = _xml(original.read("[Content_Types].xml"))
         changes = {}
         for source_sheet, (target, context, end_row) in SHEETS.items():
             header, rows = source[source_sheet]
@@ -232,10 +263,12 @@ def build_v14_report(template: Path, summaries: list[Path], output: Path, logger
         for sheet in workbook.findall(f".//{{{NS}}}sheet"):
             if sheet.attrib["name"] in {"Frequency Response_1_12", "Frequency Response_orignal"}:
                 sheet.attrib.pop("state", None)
-        calc = workbook.find(f"{{{NS}}}calcPr") or ET.SubElement(workbook, f"{{{NS}}}calcPr")
+        calc = workbook.find(f"{{{NS}}}calcPr")
+        if calc is None:
+            calc = ET.SubElement(workbook, f"{{{NS}}}calcPr")
         calc.attrib.update({"calcMode": "auto", "fullCalcOnLoad": "1", "forceFullCalc": "1"})
         header, rows = source["01_Metadata"]
-        changes["xl/workbook.xml"], changes["xl/_rels/workbook.xml.rels"], changes["[Content_Types].xml"], changes["xl/worksheets/sheet12.xml"] = _add_metadata(workbook, rels, content_types, header, rows)
+        changes["xl/workbook.xml"], changes["xl/_rels/workbook.xml.rels"], changes["[Content_Types].xml"], changes["xl/worksheets/sheet12.xml"] = _add_metadata(workbook, rels, content_types, header, rows, workbook_source)
         if count > _chart_capacity(original):
             logger.warning("Chart display coverage is smaller than %d DUTs; charts are unchanged", count)
         with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as destination:
@@ -244,13 +277,13 @@ def build_v14_report(template: Path, summaries: list[Path], output: Path, logger
                     continue
                 payload = changes.get(item.filename, original.read(item.filename))
                 if item.filename == "xl/_rels/workbook.xml.rels":
-                    rel_root = ET.fromstring(payload)
+                    rel_root = _xml(payload)
                     for rel in list(rel_root):
                         if rel.attrib.get("Type", "").endswith("/calcChain"):
                             rel_root.remove(rel)
                     payload = ET.tostring(rel_root, encoding="utf-8", xml_declaration=True)
                 if item.filename == "[Content_Types].xml":
-                    types = ET.fromstring(payload)
+                    types = _xml(payload)
                     for override in list(types):
                         if override.attrib.get("PartName") == "/xl/calcChain.xml":
                             types.remove(override)
