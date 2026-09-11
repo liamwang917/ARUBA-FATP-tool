@@ -10,7 +10,7 @@ from unittest.mock import patch
 from openpyxl import Workbook, load_workbook
 
 from src.config import SHEET_NAMES
-from src.v14_report import MAX_DUTS, V14ReportError, _apply_chart_source_updates, build_v14_report, verify_template
+from src.v14_report import MAX_DUTS, V14ReportError, _apply_chart_source_updates, _xml_column, build_v14_report, verify_template
 from src import v14_main
 
 
@@ -177,6 +177,33 @@ class V144ReportTests(unittest.TestCase):
             root = ET.fromstring(report.read("xl/worksheets/sheet4.xml"))
             namespace = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
             self.assertEqual(root.find(namespace + "dimension").attrib["ref"], "A4:CE383")
+
+    def test_dimension_expands_left_when_clean_template_starts_at_column_c(self):
+        set_template_dimension(self.template, "xl/worksheets/sheet8.xml", "C26:CE39")
+        set_template_dimension(self.template, "xl/worksheets/sheet9.xml", "C26:ADW39")
+        self.build()
+        namespace = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
+        with zipfile.ZipFile(self.output) as report:
+            phase = ET.fromstring(report.read("xl/worksheets/sheet8.xml"))
+            noise = ET.fromstring(report.read("xl/worksheets/sheet9.xml"))
+            self.assertEqual(phase.find(namespace + "dimension").attrib["ref"], "A26:CE40")
+            self.assertEqual(noise.find(namespace + "dimension").attrib["ref"], "A26:ADW40")
+
+    def test_scalar_writer_keeps_cell_nodes_in_column_order(self):
+        wb = load_workbook(self.template)
+        wb["SNR"]["B103"] = "=1+1"
+        wb.save(self.template)
+        make_summary(self.summary, rows=90)
+        self.build()
+        namespace = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
+        with zipfile.ZipFile(self.output) as report:
+            root = ET.fromstring(report.read("xl/worksheets/sheet10.xml"))
+            row103 = next(row for row in root.find(namespace + "sheetData") if row.attrib["r"] == "103")
+            refs = [cell.attrib["r"] for cell in row103.findall(namespace + "c")]
+            self.assertEqual(refs, ["A103", "B103"])
+            for row in root.find(namespace + "sheetData"):
+                columns = [_xml_column(cell.attrib["r"]) for cell in row.findall(namespace + "c")]
+                self.assertEqual(columns, sorted(columns), row.attrib["r"])
 
     def test_approved_chart_sources_use_sn_only_and_noise_starts_at_100hz(self):
         for sheet in ("Frequency Response_1_3", "Frequency Response_1_12", "Frequency Response_orignal", "THD", "Phase", "Noise Floor"):
