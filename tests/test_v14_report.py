@@ -238,7 +238,10 @@ class V144ReportTests(unittest.TestCase):
         launcher = (Path(__file__).parents[1] / "tools" / "run_v14_report.bat").read_text(encoding="utf-8")
         self.assertIn("V14.5 RC - Operational UAT", launcher)
         self.assertIn("templates\\Post-MIC limit_20260911.xlsx", launcher)
+        self.assertIn("Bundled template is missing", launcher)
+        self.assertIn("The bundled clean template is used automatically.", launcher)
         self.assertIn("This UAT launcher accepts no arguments.", launcher)
         self.assertNotIn("src.v14_main %*", launcher)
+        self.assertNotIn("Post-MIC limit_EV3_20260911.xlsx", launcher)
 
 if __name__ == "__main__": unittest.main()
