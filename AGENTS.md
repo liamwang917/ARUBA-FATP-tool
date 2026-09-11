@@ -149,3 +149,10 @@ Intermediate V13.6 summaries may remain available for debug/regression, but they
 The only approved chart-content change in V14.5 is to remove 0–90 Hz from the plotted Noise Floor chart series because the X axis is logarithmic and starts visually at 100 Hz.
 
 Keep Noise worksheet data/statistics at 0–7990 Hz. Keep chart type/style/position/axes/formatting unchanged. Update only Noise chart X/Y source ranges to start at 100 Hz (column N in the approved master). Do not modify the other seven charts.
+
+
+## SN-only DUT chart legends
+
+For the six curve charts (FR_1_3, FR_1_12, FR_original, THD, Phase, Noise Floor), each DUT series title must reference only its SN cell in column A. Do not include Test_Time or Result/status in the legend.
+
+Do not alter plotted data, chart formatting, axes, positions, or non-DUT limit/statistics series. SNR and Sensitivity chart labels remain unchanged.
