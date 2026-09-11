@@ -1,4 +1,4 @@
-# V14 Report Template Integration Specification — draft v14.3
+# V14 Report Template Integration Specification — draft v14.4
 
 Date: 2026-09-11
 
@@ -34,13 +34,16 @@ Unless explicitly approved below, V14 must not alter the template's:
 
 Implementation must work on a **copy** of the template. The original template is never modified in place.
 
-Approved exceptions in V14.1:
+Approved exceptions in V14.4:
 
 1. `Frequency Response_1_12` changes from hidden to visible.
 2. `Frequency Response_orignal` changes from hidden to visible.
-3. A new Metadata worksheet is added to the report.
+3. A new `Metadata` worksheet is appended after `Sensitivity`.
 4. SNR data rows use V13.6 Main Station SNR values instead of the template's legacy calculated SNR formula.
 5. Sensitivity data rows use V13.6 Main Station Sensitivity values instead of the template's legacy FR-at-1k formula.
+6. Before writing new DUT data, the approved DUT data regions are cleared so no legacy production rows remain.
+7. The stale `xl/calcChain.xml` part and its workbook relationship/content-type entry are removed because SNR/Sensitivity formula cells become literal values.
+8. Workbook calculation properties are updated to request Excel recalculation on open: `calcMode="auto"`, `fullCalcOnLoad="1"`, and `forceFullCalc="1"`.
 
 No other layout/style/formula/chart changes are approved.
 
@@ -163,7 +166,16 @@ For the curve sheets:
 - Result/context → column C;
 - frequency values → column D onward by matching frequency header, never by blind positional shifting.
 
-For `Frequency Response_1_3`, THD, Phase, and Noise, column C follows the corresponding V13.6 Result semantics.
+Column C is locked as follows:
+
+- `Frequency Response_1_3` → V13.6 `FR_File_Result`.
+- `THD` → V13.6 item `Result`.
+- `Phase` → V13.6 item `Result`.
+- `Noise Floor` → V13.6 item `Result`.
+- `Frequency Response_1_12` → `RawData_Match_Status`.
+- `Frequency Response_orignal` → `RawData_Match_Status`.
+
+For report display, item pass/fail text is normalized to uppercase `PASS` / `FAIL`. Do not use `Path_Result` as the report-sheet column-C value.
 
 ### RawData sheets
 
@@ -213,10 +225,60 @@ Locked implementation: append one new `Metadata` sheet after `Sensitivity`, usin
 2. V14 populates a **copy of the approved report template**.
 3. V14 writes only to approved data-input regions.
 4. Existing template charts/limits/styles stay owned by the template.
-5. V14 validates frequency headers before writing.
-6. If a source frequency is not found in the template header, do not shift data; report the mismatch.
-7. Missing source values remain blank rather than being synthesized.
-8. Existing V13.6 summary output remains available as a regression/debug artifact until V14 is validated.
+5. V14 validates the complete source frequency axis against the destination row-39 template axis before writing.
+6. Any frequency-axis mismatch is **fatal for that report**. Do not resample, interpolate, shift, partially map, or degrade-to-blank.
+7. Before population, clear all prior DUT data cells in the approved data regions on the eight measurement sheets. Preserve rows 27–36 statistics/limit formulas and row 39 headers.
+8. Missing source values remain blank rather than being synthesized.
+9. Existing V13.6 summary output remains available as a regression/debug artifact until V14 is validated.
+10. The implementation must preserve the Excel package surgically; it must not load and re-save the master workbook through a general spreadsheet round-trip library.
+
+## 9.1 Clear-before-write rule
+
+The current master contains legacy production DUT rows. They must never participate in a newly generated report.
+
+Before writing new data, V14 must clear the prior DUT data region while preserving the template's statistics/limit/header areas:
+
+- `Frequency Response_1_3`: clear DUT values from row 40 through the supported data range.
+- `Frequency Response_1_12`: same.
+- `Frequency Response_orignal`: same.
+- `THD`: same.
+- `Phase`: same.
+- `Noise Floor`: same.
+- `SNR`: clear the existing DUT/formula data rows that V14 replaces with Main Station scalar values.
+- `Sensitivity`: same.
+
+Only data-region cell content is cleared. Existing styles, row heights, column widths, formulas outside the data region, charts, drawings, limit blocks, printer settings, and workbook appearance remain unchanged.
+
+## 9.2 Workbook-integrity implementation constraints
+
+V14 template population must use a **surgical OOXML package approach** or another method proven to preserve all non-approved parts byte-for-byte.
+
+For the V14 template path, do **not** use:
+
+- openpyxl load/save round-trip;
+- LibreOffice / soffice headless save/recalculation;
+- full workbook regeneration from scratch.
+
+These are not prohibited for unrelated synthetic summaries, but they are prohibited for modifying the approved V14 master template.
+
+Required workbook-internal changes include:
+
+- remove `xl/calcChain.xml`;
+- remove the calcChain relationship from `xl/_rels/workbook.xml.rels`;
+- remove the calcChain override from `[Content_Types].xml`;
+- set `calcMode="auto"`, `fullCalcOnLoad="1"`, and `forceFullCalc="1"` in workbook calculation properties;
+- add the `Metadata` worksheet relationship/content type correctly;
+- update worksheet `<dimension>` refs when the written data extent grows.
+
+For written text, shared-string bookkeeping must remain valid. Using inline strings for newly written cells is acceptable if Excel opens cleanly and the package remains valid.
+
+A package-level regression test must verify that protected parts remain byte-identical, especially:
+
+- `xl/charts/*`
+- `xl/drawings/*`
+- `xl/styles.xml`
+- `xl/theme/*`
+- `xl/printerSettings/*`
 
 ## 10. Data capacity vs chart display capacity
 
@@ -282,9 +344,14 @@ Before any V14 report generator is considered ready:
 - report-data writes are frequency-keyed and do not shift columns;
 - no production workbook or factory-sensitive data is committed to the public repository;
 - generated XLSX opens in Microsoft Excel **without repair/recovery/corruption warning**;
-- generated XLSX contains no external workbook links.
+- generated XLSX contains no external workbook links;
+- no legacy DUT data remains after clear-before-write;
+- frequency-axis mismatch fails the report before data population;
+- `calcChain.xml` is absent from generated V14 output;
+- Excel recalculates statistics/limits on open;
+- protected chart/drawing/style/theme/printer parts remain byte-identical to the master where no approved change applies.
 
-## 13. Locked V14.2 decisions before implementation
+## 13. Locked V14.4 decisions before implementation
 
 1. RawData sheets column C = `RawData_Match_Status`.
 2. Metadata sheet name = `Metadata`; append it after `Sensitivity`; data structure follows V13.6 `01_Metadata`.
@@ -293,6 +360,13 @@ Before any V14 report generator is considered ready:
 5. SNR = V13.6 Main Station SNR value.
 6. Sensitivity = V13.6 Main Station Sensitivity value.
 7. `Frequency Response_1_12` and `Frequency Response_orignal` = visible in generated V14 reports.
+8. Clear legacy DUT data regions before writing any new report data.
+9. Column C = FR_File_Result for FR_1_3; item Result for THD/Phase/Noise; RawData_Match_Status for the two RawData FR sheets.
+10. Frequency-axis mismatch is fatal; no resampling or partial mapping.
+11. Remove stale calcChain and force full recalculation on open.
+12. Do not use openpyxl/LibreOffice round-trip for the approved V14 master.
+13. Preserve protected OOXML parts byte-for-byte.
+14. Output is invalid if Microsoft Excel displays repair/recovery/corruption warnings.
 
 There are no remaining product-level semantic decisions blocking implementation. The next step is implementation/review focused on workbook integrity and preservation.
 
@@ -307,3 +381,13 @@ Therefore:
 - STDEV.P and all other existing statistical calculations use every populated DUT row within the fixed statistical range;
 - chart coverage is intentionally allowed to be smaller than the data/statistics population;
 - no data row is dropped merely to make chart and statistics row counts equal.
+
+
+## 15. Known pre-existing template issues — preserve, do not fix in V14
+
+These issues already exist in the approved master and are outside V14's allowed-change scope:
+
+1. `Frequency Response_1_3!D35/D36` uses the 6-sigma row reference where the surrounding 10-sigma pattern uses row 32. Record only; do not correct it in V14.
+2. The workbook's existing `_xlnm._FilterDatabase` range is stale/inconsistent with the current data extent. Preserve it unchanged unless the user separately approves a template-maintenance revision.
+
+V14 implementation must not silently "clean up" these pre-existing template behaviors.
