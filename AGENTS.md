@@ -127,7 +127,9 @@ For the approved V14 report master:
 - remove stale calcChain and request full recalculation on Excel open;
 - do not use openpyxl or LibreOffice load/save round-trip to populate the approved master;
 - preserve protected OOXML chart/drawing/style/theme/printer parts byte-for-byte;
-- do not repair unrelated pre-existing template defects;
+- apply the explicitly approved `Frequency Response_1_3!D35=D28+D32` and `D36=D28-D32` correction, but do not repair other unrelated template defects;
+- preserve Metadata `test_start_time` / `test_end_time` fractional seconds to millisecond precision;
+- preserve original worksheet dimension bounds unless actual written data require expansion; do not shrink/reset them unnecessarily;
 - treat any Excel repair/recovery/corrupt warning as a failed output.
 
 Do not merge V14 to main unless the user explicitly approves it.
