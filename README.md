@@ -333,7 +333,7 @@ V14 以使用者提供的 Excel report template 為 master，原則是 **不重�
 
 目前 V14 PR 只記錄模板結構、保護規則與 V13.6 → report sheet mapping；尚未修改 V13.6 parser，也尚未批准修改 template formulas/charts/layout。
 
-模板 binary 不提交到 public repository；以 SHA-256 / sheet manifest 固定版本。詳見：
+V14.5 clean template 由使用者確認可公開，版本化於 `templates/`，並以 SHA-256 / sheet manifest 固定版本。詳見：
 
 - `docs/v14_report_template_spec_2026-09-11.md`
 - `data/templates/v14_template_manifest_2026-09-11.md`
@@ -341,8 +341,17 @@ V14 以使用者提供的 Excel report template 為 master，原則是 **不重�
 
 ## V14.5 template packaging
 
-The V14.5 report template is intended to be versioned with the tool at:
+The approved clean V14.5 template is versioned with the tool at:
 
-`templates/Post-MIC limit_EV3_20260911.xlsx`
+`templates/Post-MIC limit_20260911.xlsx`
 
-Normal users do not select the template manually. The tool validates the packaged template identity automatically. For public-repository hygiene, use a sanitized release template with legacy DUT production values removed while preserving the report structure.
+SHA-256:
+
+`a556aa066b9412fb17512bb4f992d26909676c5bc53a138616e2cebef2925724`
+
+Normal users do not select or install the template manually. The tool validates the
+packaged template identity automatically.
+
+The template contains no legacy DUT / RawData production values. Real FATP archives,
+RawData archives, CSV/WAV files, generated summaries, generated reports, DUT SN/MAC,
+operator/tester IDs, and other factory-sensitive data must still never be committed.
