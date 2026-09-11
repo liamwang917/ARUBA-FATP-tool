@@ -1,4 +1,4 @@
-# V14 Report Template Integration Specification — draft v14.1
+# V14 Report Template Integration Specification — draft v14.2
 
 Date: 2026-09-11
 
@@ -8,7 +8,7 @@ V13.6 on `main` remains the validated production data-normalization pipeline.
 
 V14 is a **report-template integration phase** based on:
 
-`Post-MIC limit_EV2_20260902-2.xlsx`
+`Post-MIC limit_EV3_20260911.xlsx`
 
 The V14 branch is:
 
@@ -46,13 +46,13 @@ No other layout/style/formula/chart changes are approved.
 
 ## 2. Template identity
 
-- Filename: `Post-MIC limit_EV2_20260902-2.xlsx`
-- Size: 5,422,338 bytes
-- SHA-256: `5c24f2dbd1cc5350421c902369e7e250718f1fc20aa04f6e2f89ffe633527315`
+- Filename: `Post-MIC limit_EV3_20260911.xlsx`
+- Size: 5,421,221 bytes
+- SHA-256: `93af9584fa442b70c8d056921d33135db82656e772f9c84019adc46010c4eb7e`
 - Original worksheets: 11
 - Original charts: 8
 - Original hidden worksheets: 2
-- External workbook links: 1 legacy workbook relationship
+- External workbook links: **0 (confirmed removed in the new master template)**
 
 The binary workbook is not committed to this public repository at this stage. The manifest records its structure and hash only.
 
@@ -81,7 +81,7 @@ Important: `Frequency Response_orignal` is intentionally recorded with the templ
 - add one new Metadata sheet
 - all other existing worksheet names/order/states remain unchanged
 
-The exact Metadata sheet name/order is still an open item; recommendation is `Metadata` appended after `Sensitivity` so all existing sheet positions remain untouched.
+The Metadata sheet name/order is now **locked**: `Metadata`, appended after `Sensitivity`, so all original 11 sheet positions remain untouched.
 
 ## 4. Template calculation/report layout
 
@@ -123,7 +123,7 @@ Approved V14 change:
 
 `Audio Limit_Sigma` is formula-driven and references the measurement/statistics sheets.
 
-The current workbook contains a legacy external workbook link used by frequency-reference formulas in `Audio Limit for EV` and `Audio Limit for EV3`. Preserve that relationship for now; whether it should be internalized is still open.
+The current master workbook has been reissued by the user with the legacy external workbook relationship removed. V14 must not recreate any external workbook dependency.
 
 ## 5. Existing chart contract
 
@@ -171,7 +171,7 @@ For `Frequency Response_1_3`, THD, Phase, and Noise, column C follows the corres
 
 V13.6 supplies SN, Test_Time, RawData_Match_Status, and frequency values.
 
-Column-C content is still open. Recommendation: use `RawData_Match_Status` in column C because it explains blank rows (`NOT_PROVIDED`, `UNMATCHED`, `AMBIGUOUS`) without inventing PASS/FAIL.
+Column C is now **locked** to `RawData_Match_Status` because it explains blank rows (`NOT_PROVIDED`, `UNMATCHED`, `AMBIGUOUS`) without inventing PASS/FAIL.
 
 ## 7. Approved scalar semantics
 
@@ -205,7 +205,7 @@ Requirements:
 - IDs/MAC-like values remain text-safe;
 - adding Metadata must not alter any existing sheet layout or chart.
 
-Recommended implementation: append one new `Metadata` sheet after `Sensitivity`, using the V13.6 Metadata table structure. Exact sheet name/order/style remains to be confirmed by the user before implementation.
+Locked implementation: append one new `Metadata` sheet after `Sensitivity`, using the V13.6 `01_Metadata` table structure. Do not insert Metadata between any of the original template sheets.
 
 ## 9. V14 implementation principle
 
@@ -228,28 +228,27 @@ The template uses fixed statistics ranges:
 
 V14 must not silently truncate data.
 
-Before implementation, select one policy:
+V14 now uses the **fixed-capacity policy**:
 
-A. **Fixed-capacity policy (recommended for first V14):** if any output exceeds the template's supported row count, stop that report with a clear error/warning and do not silently omit rows.
+- if any output exceeds the template's supported row count, stop that report with a clear error/warning;
+- do not silently truncate rows;
+- do not dynamically extend formulas/chart ranges/styles in V14.2.
 
-B. Dynamic-extension policy: extend formulas/chart ranges/styles for additional rows. This changes template formulas/ranges and therefore requires explicit approval and more regression testing.
+## 11. External-link status
 
-## 11. External-link finding
+The replacement master template `Post-MIC limit_EV3_20260911.xlsx` has been verified to contain **no `xl/externalLinks/` relationship**.
 
-The master workbook contains one legacy external workbook relationship. `Audio Limit for EV` and `Audio Limit for EV3` contain formulas that reference cells in an external `[1]Frequency Response` workbook.
+V14 rule:
 
-This can produce an Excel "Update Links" dependency when the original external source is unavailable.
-
-Current policy: preserve it unchanged.
-
-Open decision: keep the external dependency permanently, or later replace those references with equivalent internal template references after validation.
+- do not add or recreate an external workbook link;
+- all generated reports must remain self-contained with respect to workbook links.
 
 ## 12. V14 acceptance criteria
 
 Before any V14 report generator is considered ready:
 
-- generated report is based on a copy of the master;
-- all original sheet names/order remain unchanged;
+- generated report is based on a copy of `Post-MIC limit_EV3_20260911.xlsx`;
+- all original sheet names/order remain unchanged, with only the approved appended `Metadata` sheet;
 - `Frequency Response_1_12` and `Frequency Response_orignal` are visible;
 - the approved Metadata sheet is present;
 - all 8 existing charts remain present and unchanged;
@@ -258,13 +257,18 @@ Before any V14 report generator is considered ready:
 - statistics/limit blocks remain functional;
 - V13.6 regression tests remain green;
 - report-data writes are frequency-keyed and do not shift columns;
-- no production workbook or factory-sensitive data is committed to the public repository.
+- no production workbook or factory-sensitive data is committed to the public repository;
+- generated XLSX opens in Microsoft Excel **without repair/recovery/corruption warning**;
+- generated XLSX contains no external workbook links.
 
-## 13. Remaining open items before implementation
+## 13. Locked V14.2 decisions before implementation
 
-1. RawData sheets column C: use `RawData_Match_Status` (recommended) or leave blank?
-2. Metadata sheet exact name/order/style: recommended `Metadata` appended after `Sensitivity`, using V13.6 Metadata table structure.
-3. Capacity policy: fixed-capacity stop/warn vs dynamic formula/chart extension.
-4. Legacy external workbook link: preserve permanently vs later internalize after validation.
+1. RawData sheets column C = `RawData_Match_Status`.
+2. Metadata sheet name = `Metadata`; append it after `Sensitivity`; data structure follows V13.6 `01_Metadata`.
+3. Capacity policy = fixed-capacity stop/warn; never silently truncate; do not auto-extend template formulas/charts.
+4. External workbook links = none; do not recreate them.
+5. SNR = V13.6 Main Station SNR value.
+6. Sensitivity = V13.6 Main Station Sensitivity value.
+7. `Frequency Response_1_12` and `Frequency Response_orignal` = visible in generated V14 reports.
 
-No other product/data-semantic conflict was found in the current template analysis.
+There are no remaining product-level semantic decisions blocking implementation. The next step is implementation/review focused on workbook integrity and preservation.
